@@ -1,0 +1,7 @@
+These are independent modules that should be able to work with each other,
+using stable interfaces and methods.
+
+
+CLIENT:
+- Database storage
+- Server Comms
