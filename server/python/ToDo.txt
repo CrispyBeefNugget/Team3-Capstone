@@ -1,0 +1,26 @@
+These are some things that I should take care of first,
+before attempting to devise any more communication commands.
+
+SERVER:
+- Initialize databases
+    - Token database
+    - User public key database
+        - Public key hash
+        - List of conversation IDs
+    - Online user database (maybe???)
+    - Conversation database
+        - Primary key: Conversation IDs
+        - List of user public key hashes
+        - Undelivered messages
+
+- Add server support for authenticating and registering clients
+    - Public-key cryptography (to encrypt challenges)
+    - Random challenge generation
+    - Challenge signature (response) verification
+
+
+CLIENT:
+- Public-key cryptography:
+    - Generate keypair
+    - Decrypt and sign challenge
+    - JSON parsing support
