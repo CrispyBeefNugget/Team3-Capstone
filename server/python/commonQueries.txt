@@ -1,0 +1,44 @@
+initRegisteredUsersTbl = "CREATE TABLE tblRegisteredUsers (UserPublicKeySHA2_512 BLOB(64) NOT NULL PRIMARY KEY, ConversationIDs BLOB);"
+initConversationTbl = "CREATE TABLE tblConversations (ConversationID TINYTEXT NOT NULL PRIMARY KEY,Participants BLOB NOT NULL);"
+initMailboxTbl = "CREATE TABLE tblMailbox (ConversationID TINYTEXT NOT NULL, ArriveTimestamp INT, ExpireTimestamp INT NOT NULL, Recipient BLOB(64) NOT NULL, Message LONGBLOB(60000000) NOT NULL, FOREIGN KEY(Recipient) REFERENCES tblRegisteredUsers(UserPublicKeySHA2_512));"
+initChallengeTbl = "CREATE TABLE tblChallenges (ChallengeID TINYTEXT NOT NULL PRIMARY KEY, Challenge BLOB NOT NULL, UserPublicKey BLOB NOT NULL, ExpireTimestamp INT NOT NULL);"
+initTokenTbl = "CREATE TABLE tblTokens (TokenID BLOB NOT NULL PRIMARY KEY, TokenSecret BLOB NOT NULL, UserPublicKeyHash BLOB NOT NULL, ExpireTimestamp INT NOT NULL, FOREIGN KEY(UserPublicKeyHash) REFERENCES tblRegisteredUsers(UserPublicKeySHA2_512));"
+
+
+initRegisteredUsersTbl = "CREATE TABLE tblRegisteredUsers (
+    UserPublicKeySHA2_512 BLOB(64) NOT NULL PRIMARY KEY,
+    ConversationIDs BLOB
+    );"
+
+initConversationTbl = "CREATE TABLE tblConversations (
+    ConversationID TINYTEXT NOT NULL PRIMARY KEY,
+    Participants BLOB NOT NULL
+    );"
+
+initMailboxTbl = "CREATE TABLE tblMailbox (
+    ConversationID TINYTEXT NOT NULL,
+    ArriveTimestamp INT,
+    ExpireTimestamp INT NOT NULL,
+    Recipient BLOB(64) NOT NULL,
+    Message LONGBLOB(60000000) NOT NULL,
+    FOREIGN KEY(Recipient) REFERENCES tblRegisteredUsers(UserPublicKeySHA2_512)
+    );"
+
+initChallengeTbl = "CREATE TABLE tblChallenges (
+    ChallengeID TINYTEXT NOT NULL PRIMARY KEY,
+    Challenge BLOB NOT NULL,
+    UserPublicKey BLOB NOT NULL,
+    ExpireTimestamp INT NOT NULL
+    );"
+
+initOnlineTbl = "CREATE TABLE tblOnlineUsers (
+    UserPublicKeySHA2_512 BLOB(64),
+    );"
+
+initTokenTbl = "CREATE TABLE tblTokens (
+    TokenID BLOB NOT NULL PRIMARY KEY,
+    TokenSecret BLOB NOT NULL,
+    UserPublicKeyHash BLOB NOT NULL,
+    ExpireTimestamp INT NOT NULL,
+    FOREIGN KEY(UserPublicKeyHash) REFERENCES tblRegisteredUsers(UserPublicKeySHA2_512)
+    );"

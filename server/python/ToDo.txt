@@ -13,6 +13,8 @@ SERVER:
         - List of user public key hashes
         - Undelivered messages
 
+DBs all created in SQLite3!
+
 - Add server support for authenticating and registering clients
     - Public-key cryptography (to encrypt challenges)
     - Random challenge generation
