@@ -12,26 +12,8 @@ class DMAFT extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      // title: 'DMAFT Home',
-      // theme: ThemeData(
-      //   colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
-      //   useMaterial3: true,
-      // ),
       home: SplashScreen(),
-    );
-  }
-}
-
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('DMAFT'),
-      ),
-      body: const Text('Welcome to DMAFT!'),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -49,8 +31,9 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive); // Makes the splash screen fullscreen.
 
+    // Redirects from the splashscreen to the homescreen after a period of time.
     Future.delayed(Duration(seconds: 2), () {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
@@ -58,13 +41,11 @@ class _SplashScreenState extends State<SplashScreen>
         )
       );
     });
-
-
   }
 
   @override
   void dispose() {
-    SystemChrome.setEnabledSystemUIMode(
+    SystemChrome.setEnabledSystemUIMode( // Leaves fullscreen once the homescreen loads in.
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
     );
@@ -78,26 +59,26 @@ class _SplashScreenState extends State<SplashScreen>
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.grey, Colors.lightBlue],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            colors: [const Color.fromRGBO(4, 150, 255, 1), const Color.fromRGBO(45, 58, 58, 1)],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
             Icon(
-              Icons.message,
-              size: 80,
+              Icons.messenger_rounded,
+              size: 140,
               color: Colors.white,
             ),
             SizedBox(height: 20),
             Text(
               'DMAFT',
               style: TextStyle(
-                fontStyle: FontStyle.italic,
+                fontStyle: FontStyle.normal,
                 color: Colors.white,
-                fontSize: 32,
+                fontSize: 40,
               ),
             ),
           ],
@@ -106,3 +87,70 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int myIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('DMAFT'),
+        backgroundColor: Color.fromRGBO(4, 150, 255, 1),
+        centerTitle: true,
+        foregroundColor: Colors.white,
+        toolbarHeight: 50,
+      ),
+      body: const Text('Welcome to DMAFT!'),
+      bottomNavigationBar: BottomNavigationBar(
+
+        onTap: (index) {
+          setState(() {
+            myIndex = index;
+          });
+        },
+
+        currentIndex: myIndex,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.home,
+            ),
+            label: 'Home',
+          ),
+
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.maps_ugc_rounded,
+            ),
+            label: 'New Chat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.search,
+            ),
+            label: 'Search',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.settings,
+            ),
+            label: 'Settings',
+          ),
+        ],
+        selectedItemColor: Color.fromRGBO(4, 150, 255, 1),
+        unselectedItemColor: Color.fromRGBO(45, 58, 58, 1),
+      ),
+    );
+  }
+}
+
+
+
