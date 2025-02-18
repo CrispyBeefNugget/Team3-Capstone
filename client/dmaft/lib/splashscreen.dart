@@ -23,7 +23,7 @@ class _SplashScreenState extends State<SplashScreen>
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => HomeScreen(),
-        )
+        ),
       );
     });
   }
@@ -42,16 +42,19 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Container(
         width: double.infinity,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [const Color.fromRGBO(4, 150, 255, 1), const Color.fromRGBO(45, 58, 58, 1)],
+            colors: [
+              Color.fromRGBO(4, 150, 255, 1),
+              Color.fromRGBO(45, 58, 58, 1),
+            ],
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
           ),
         ),
-        child: Column(
+        child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(
               Icons.messenger_rounded,
               size: 140,

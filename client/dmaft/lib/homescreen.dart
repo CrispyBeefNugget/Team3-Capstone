@@ -9,7 +9,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int myIndex = 1;
-  List<Widget> widgetList = [
+  List<Widget> widgetList = const [
     Text(
       'Contacts',
       style: TextStyle(
@@ -38,16 +38,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: widgetList[myIndex],
-        backgroundColor: Color.fromRGBO(4, 150, 255, 1),
+        backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
         centerTitle: true,
         foregroundColor: Colors.white,
         toolbarHeight: 50,
         actions: <Widget>[
           IconButton(
             onPressed: () {},
-            icon: Icon(
+            icon: const Icon(
               Icons.person,
-
             ),
           ),
         ],
@@ -55,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: Drawer(
         child: ListView(
           children: [
-            SizedBox(
+            const SizedBox(
               height: 59.0,
               child: DrawerHeader(
                 decoration: BoxDecoration(
@@ -70,7 +69,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-
             ListTile(
               title: const Text('New Chat'),
               onTap: () {},
@@ -82,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      body: Center(
+      body: const Center( // Add page content here. Might need to remove the const.
         child: Text('Placeholder'),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -100,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             label: 'Contacts',
           ),
-
           BottomNavigationBarItem(
             icon: Icon(
               Icons.message_rounded,
@@ -114,8 +111,8 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Settings',
           ),
         ],
-        selectedItemColor: Color.fromRGBO(4, 150, 255, 1),
-        unselectedItemColor: Color.fromRGBO(45, 58, 58, 1),
+        selectedItemColor: const Color.fromRGBO(4, 150, 255, 1),
+        unselectedItemColor: const Color.fromRGBO(45, 58, 58, 1),
       ),
     );
   }
