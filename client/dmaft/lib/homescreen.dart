@@ -8,19 +8,83 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int myIndex = 0;
+  int myIndex = 1;
+  List<Widget> widgetList = [
+    Text(
+      'Contacts',
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+    Text(
+      'Chats',
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+    Text(
+      'Settings',
+      style: TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DMAFT'),
+        title: widgetList[myIndex],
         backgroundColor: Color.fromRGBO(4, 150, 255, 1),
         centerTitle: true,
         foregroundColor: Colors.white,
         toolbarHeight: 50,
+        actions: <Widget>[
+          IconButton(
+            onPressed: () {},
+            icon: Icon(
+              Icons.person,
+
+            ),
+          ),
+        ],
       ),
-      body: const Text('Welcome to DMAFT!'),
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            SizedBox(
+              height: 59.0,
+              child: DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Color.fromRGBO(4, 150, 255, 1),
+                ),
+                child: Text(
+                  'DMAFT',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold
+                  ),
+                ),
+              ),
+            ),
+
+            ListTile(
+              title: const Text('New Chat'),
+              onTap: () {},
+            ),
+            ListTile(
+              title: const Text('Search'),
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+      body: Center(
+        child: Text('Placeholder'),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
@@ -32,22 +96,16 @@ class _HomeScreenState extends State<HomeScreen> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(
-              Icons.home,
+              Icons.contact_page,
             ),
-            label: 'Home',
+            label: 'Contacts',
           ),
 
           BottomNavigationBarItem(
             icon: Icon(
-              Icons.maps_ugc_rounded,
+              Icons.message_rounded,
             ),
-            label: 'New Chat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(
-              Icons.search,
-            ),
-            label: 'Search',
+            label: 'Chats',
           ),
           BottomNavigationBarItem(
             icon: Icon(
