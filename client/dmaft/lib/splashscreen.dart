@@ -1,22 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-void main() {
-  runApp(const DMAFT());
-}
-
-class DMAFT extends StatelessWidget {
-  const DMAFT({super.key});
-
-  // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: SplashScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
+import 'package:dmaft/homescreen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -87,70 +72,3 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int myIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('DMAFT'),
-        backgroundColor: Color.fromRGBO(4, 150, 255, 1),
-        centerTitle: true,
-        foregroundColor: Colors.white,
-        toolbarHeight: 50,
-      ),
-      body: const Text('Welcome to DMAFT!'),
-      bottomNavigationBar: BottomNavigationBar(
-
-        onTap: (index) {
-          setState(() {
-            myIndex = index;
-          });
-        },
-
-        currentIndex: myIndex,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(
-              Icons.home,
-            ),
-            label: 'Home',
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(
-              Icons.maps_ugc_rounded,
-            ),
-            label: 'New Chat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(
-              Icons.search,
-            ),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(
-              Icons.settings,
-            ),
-            label: 'Settings',
-          ),
-        ],
-        selectedItemColor: Color.fromRGBO(4, 150, 255, 1),
-        unselectedItemColor: Color.fromRGBO(45, 58, 58, 1),
-      ),
-    );
-  }
-}
-
-
-
