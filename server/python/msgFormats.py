@@ -6,30 +6,31 @@ import uuid
 #PING
 pingMsgFormat = {
     'Command':'PING',
-    'ClientTimestamp': time.gmtime(),
+    'ClientTimestamp': time.time(),
 }
 
 #CONNECT TO SERVER (SIGN UP OR LOG IN)
 connectMsgFormat = {
     'Command':'CONNECT',
-    'UserPublicKey':'', #public key data here in bytes
-    'ClientTimestamp': time.gmtime(),
+    'UserPublicKey':'', #public key data here in base64-encoded bytes
+    'ClientTimestamp': time.time(),
 }
 
 #AUTHENTICATE TO SERVER (after server sends encrypted challenge)
 authMsgFormat = {
     'Command':'AUTHENTICATE',
     'ChallengeId':'', #temporary UUID identifying the server-sent challenge
-    'Response':'', #signature data that can only be produced by the true user with their private key
-    'ClientTimestamp': time.gmtime(),
+    'Signature':'', #signature data that can only be produced by the true user with their private key. Base64-encoded bytes.
+    'HashAlgorithm':'', #Must be one of: SHA256, SHA384, SHA512
+    'ClientTimestamp': time.time(),
 }
 
 #DISCONNECT FROM SERVER (will likely never be used in practice)
 disconnectMsgFormat = {
     'Command':'DISCONNECT',
-    'UserPublicKey':'',
-    'Token':'', #ephemeral token provided to 'securely' keep the session alive. Most major platforms use a token of some kind for continued auth.
-    'ClientTimestamp': time.gmtime(),
+    'TokenId':'',
+    'TokenSecret':'', #ephemeral token provided to 'securely' keep the session alive. Most major platforms use a token of some kind for continued auth.
+    'ClientTimestamp': time.time(),
 }
 
 
@@ -43,7 +44,7 @@ generalErrorFormat = {
     'ErrorType': dict,
     'UserErrorMessage': str,
     'ClientTimestamp':'', #inherited from request
-    'ServerTimestamp': time.gmtime()
+    'ServerTimestamp': time.time()
 }
 
 #Error type is one of:
@@ -67,7 +68,7 @@ pingReplyFormat = {
     'Command': 'PING',
     'Successful': True,
     'ClientTimestamp':'', #inherited from request
-    'ServerTimestamp': time.gmtime()
+    'ServerTimestamp': time.time()
 }
 
 #CONNECT RESPONSE:
@@ -76,10 +77,10 @@ connectReplyFormat = {
     'Command': 'CONNECT',
     'Successful': True,
     'ChallengeRequired': True,
-    'ChallengeId': uuid.uuid4(),
-    'ChallengeData':'', #server generates random challenge string for client to decrypt & sign; encrypts using user's public key
+    'ChallengeId': str(uuid.uuid4()),
+    'ChallengeData':'', #server generates random challenge bytes (base64-encoded) for client to sign
     'ClientTimestamp':'', #inherited from request
-    'ServerTimestamp': time.gmtime()
+    'ServerTimestamp': time.time()
 }
 
 #AUTHENTICATE RESPONSE:
@@ -88,7 +89,7 @@ authReplyFormat = {
     'Command': 'AUTHENTICATE',
     'Successful': True,
     'TokenId': '', #generate a random ID string for this client to use for future near-time transactions
-    'Token': '', #generate a random token password for this client to use for future near-time transactions. Store the password hash but immediately destroy the raw value afterwards.
+    'TokenSecret': '', #generate a random token password for this client to use for future near-time transactions. Store the password hash but immediately destroy the raw value afterwards.
     'ClientTimestamp': '', #inherited from request
-    'ServerTimestamp': time.gmtime()
+    'ServerTimestamp': time.time()
 }

@@ -1,17 +1,18 @@
 import bcrypt
 import sqlite3
-
-
+import uuid
+import time
 
 #INITIALIZATION FUNCTIONS
 #Safe by default, but can erase data if you tell them to!!
 
 
-def executeQuery(*, cursor: sqlite3.Cursor, query: str):
+def executeQuery(*, connection: sqlite3.Connection, query: str):
     if not sqlite3.complete_statement(query):
         raise ValueError("dmaftServerDB.executeQuery(): Invalid SQL query string!")
 
     try:
+        cursor = connection.cursor()
         cursor.execute(query)
     except:
         raise RuntimeError("dmaftServerDB.executeQuery(): Provided query failed to execute.")
@@ -22,7 +23,7 @@ def executeQuery(*, cursor: sqlite3.Cursor, query: str):
 
 def initTable(
         *, 
-        cursor: sqlite3.Cursor, 
+        connection: sqlite3.Connection, 
         destroyExistingTable: bool = False, 
         tableName: str,
         createStmt: str
@@ -33,21 +34,21 @@ def initTable(
         #If this errors out; no worries - it could just mean that the table already doesn't exist.
         destroyTable = "DROP TABLE " + tableName
         try:
-            executeQuery(cursor=cursor, query=destroyTable)
+            executeQuery(connection=connection, query=destroyTable)
         except:
             pass
 
     #Try to create the new table.
     try:
         getAllTables = "SELECT name FROM sqlite_master WHERE type='table';"
-        tables = executeQuery(cursor=cursor, query=getAllTables)
+        tables = executeQuery(connection=connection, query=getAllTables)
         for table in tables:
             if str(table[0]).lower() == tableName.lower():
                 #There's a conflicting table. Stop.
                 return False
         
         #The table doesn't exist. We can safely create it.
-        executeQuery(cursor=cursor, query=createStmt)
+        executeQuery(connection=connection, query=createStmt)
         return True
     except:
         #Failed to safely create the table. Abort.
@@ -62,25 +63,25 @@ initMailboxTbl = "CREATE TABLE tblMailbox (ConversationID TINYTEXT NOT NULL, Arr
 initChallengeTbl = "CREATE TABLE tblChallenges (ChallengeID TINYTEXT NOT NULL PRIMARY KEY, Challenge BLOB NOT NULL, UserPublicKey BLOB NOT NULL, ExpireTimestamp INT NOT NULL);"
 initTokenTbl = "CREATE TABLE tblTokens (TokenID BLOB NOT NULL PRIMARY KEY, TokenSecret BLOB NOT NULL, UserPublicKeyHash BLOB NOT NULL, ExpireTimestamp INT NOT NULL, FOREIGN KEY(UserPublicKeyHash) REFERENCES tblRegisteredUsers(UserPublicKeySHA2_512));"
 
-def getAllTableSchemas(*, cursor: sqlite3.Cursor):
+def getAllTableSchemas(*, connection: sqlite3.Connection):
     try:
         schemas = []
         tables = []
-        allTablesResult = executeQuery(cursor=cursor, query="SELECT name FROM sqlite_master WHERE type='table';")
+        allTablesResult = executeQuery(connection=connection, query="SELECT name FROM sqlite_master WHERE type='table';") #FIX THIS TO USE SQL STATEMENT COMPLETION; BETTER SECURITY
         for item in allTablesResult:
             tables.append(item[0])
         for table in tables:
-            schema = executeQuery(cursor=cursor, query="select sql from sqlite_master where type = 'table' and name = '" + table + "';")
+            schema = executeQuery(connection=connection, query="select sql from sqlite_master where type = 'table' and name = '" + table + "';") #FIX THIS TO USE SQL STATEMENT COMPLETION; BETTER SECURITY
+            print(schema)
             schemas.append(schema)
         return schemas
     except:
         return None
 
-def getAllTables(*, cursor: sqlite3.Cursor):
+def getAllTables(*, connection: sqlite3.Connection):
     try:
-        schemas = []
         tables = []
-        allTablesResult = executeQuery(cursor=cursor, query="SELECT name FROM sqlite_master WHERE type='table';")
+        allTablesResult = executeQuery(connection=connection, query="SELECT name FROM sqlite_master WHERE type='table';")
         for item in allTablesResult:
             tables.append(item[0])
         return tables
@@ -90,5 +91,76 @@ def getAllTables(*, cursor: sqlite3.Cursor):
 def connectSandbox():
     print("WARNING: This is a dev function that will be removed in production!")
     print("It only exists to make testing easier.")
-    connection = sqlite3.connect('sandbox.db')
-    return connection.cursor()
+    return sqlite3.connect('sandbox.db')
+
+def connectDB():
+    return sqlite3.connect('master.db')
+
+def startDB():
+    correctSchemas = [
+        [('CREATE TABLE tblRegisteredUsers (UserPublicKeySHA2_512 BLOB(64) NOT NULL PRIMARY KEY, ConversationIDs BLOB)',)],
+        [('CREATE TABLE tblConversations (ConversationID TINYTEXT NOT NULL PRIMARY KEY,Participants BLOB NOT NULL)',)],
+        [('CREATE TABLE tblMailbox (ConversationID TINYTEXT NOT NULL, ArriveTimestamp INT, ExpireTimestamp INT NOT NULL, Recipient BLOB(64) NOT NULL, Message LONGBLOB(60000000) NOT NULL, FOREIGN KEY(Recipient) REFERENCES tblRegisteredUsers(UserPublicKeySHA2_512))',)],
+        [('CREATE TABLE tblChallenges (ChallengeID TINYTEXT NOT NULL PRIMARY KEY, Challenge BLOB NOT NULL, UserPublicKey BLOB NOT NULL, ExpireTimestamp INT NOT NULL)',)],
+        [('CREATE TABLE tblTokens (TokenID BLOB NOT NULL PRIMARY KEY, TokenSecret BLOB NOT NULL, UserPublicKeyHash BLOB NOT NULL, ExpireTimestamp INT NOT NULL, FOREIGN KEY(UserPublicKeyHash) REFERENCES tblRegisteredUsers(UserPublicKeySHA2_512))',)],
+    ]
+
+    try:
+        conn = connectDB()
+    except Exception as e:
+        print("Failed to load database file!")
+        raise e
+    
+    schemas = getAllTableSchemas(connection=conn)
+    if schemas is None:
+        conn.close()
+        raise RuntimeError("Failed to list schemas from tables in production database!")
+    
+    for properSchema in correctSchemas:
+        if properSchema not in schemas:
+            conn.close()
+            raise RuntimeError("Expected table schema is missing from database: " + properSchema)
+    
+    return conn
+
+
+#IMPORTANT: All methods below assume that a valid server is running with the schema described above.
+
+def addChallenges(*, connection: sqlite3.Connection, challenges: list[bytes], publicKeys: list[bytes]):
+    if len(challenges) != len(publicKeys):
+        raise ValueError("Challenge list must have the same number of items as the public key list!")
+    
+    result = executeQuery(connection = connection, query = 'SELECT ChallengeID from tblChallenges;')
+    if result is None:
+        #Unable to list the current UUIDs
+        return False
+    
+    #Uncomment this once testing is done. No point in operating if there's nothing to add.
+    #if len(challenges) == 0:
+    #    return None
+
+    #Make sure that the new challenge IDs we generate don't conflict with any existing ones
+    currentUUIDs = []
+    for row in result:
+        currentUUIDs.append(str(row[0]).upper())
+
+    newUUIDs = []
+    while len(newUUIDs) < len(challenges):
+        newUUID = str(uuid.uuid4()).upper()
+        if newUUID not in currentUUIDs:
+            newUUIDs.append(newUUID)
+
+    expireTime = int(time.time()) + 300 #Allow 5 minutes for the challenge to be satisfied. Expire it afterwards.
+
+    newRecords = []
+    for i in range(len(challenges)):
+        newRecords.append((newUUIDs[i], challenges[i], publicKeys[i], expireTime))
+    
+    try:
+        with connection:
+            stmt = 'INSERT INTO tblChallenges (ChallengeID, Challenge, UserPublicKey, ExpireTimestamp) VALUES (?,?,?,?);'
+            connection.executemany(stmt, newRecords)
+        return True
+    except Exception as e:
+        print("Unable to complete operation: ", e)
+        return False
