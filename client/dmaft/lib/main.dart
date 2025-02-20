@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:dmaft/splashscreen.dart';
+import 'package:dmaft/splash_screen.dart';
 import 'package:dmaft/wbs_comms.dart';
 
 /*
@@ -27,8 +27,12 @@ class DMAFT extends StatelessWidget {
   Widget build(BuildContext context) {
     //testConnectionNoTLS(); //Uncomment this to send a PING command to insecureServer.py.
     //testConnectionTLS(); //Uncomment this to send a PING command to tlsServer.py. Requires a valid certificate and private key.
-    return const MaterialApp(
-      home: SplashScreen(),
+    return MaterialApp(
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.light,
+      ),
+      home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
