@@ -32,6 +32,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
     'Carol Hargrove',
   ];
 
+  List<String> filteredList = [];
+
   bool isSelectionMode = false;
   late List<bool> _selected;
   bool _selectAll = false;
@@ -43,6 +45,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
   }
 
   void initializeSelection() {
+    testList.sort();
+    testList.add('Test Test');
     _selected = List<bool>.generate(testList.length, (_) => false);
   }
 
@@ -87,49 +91,55 @@ class _ContactsScreenState extends State<ContactsScreen> {
         ],
       ),
 
-      body: ListBuilder(
-        contactList: testList,
-        isSelectionMode: isSelectionMode,
-        selectedList: _selected,
-        onSelectionChange: (bool x) {
-          setState(() {
-            isSelectionMode = x;
-          });
-        },
+      body: Column(
+        children: <Widget>[
+          
+
+          SearchBar(
+            padding: const WidgetStatePropertyAll<EdgeInsets>(
+              EdgeInsets.symmetric(horizontal: 16.0),
+            ),
+            onTap: () {
+              //controller.openView();
+            },
+            onChanged: (_) {
+              //controller.openView();
+            },
+            onSubmitted: (query) {
+              // Perform a search based on the query.
+            },
+            onTapOutside: (_) {
+
+            },
+
+
+            leading: const Icon(Icons.search),
+            hintText: 'Search',
+            shape: WidgetStatePropertyAll(
+              BeveledRectangleBorder(),
+            ),
+          ),
+
+          Expanded(
+            child: ListBuilder(
+              contactList: testList,
+              isSelectionMode: isSelectionMode,
+              selectedList: _selected,
+              onSelectionChange: (bool x) {
+                setState(() {
+                  isSelectionMode = x;
+                });
+              },
+            ),
+          ),
+          
+
+
+        ],
+        
       ),
 
-      // body: SearchBar(
-      //   //builder: (BuildContext context, SearchController controller) {
-      //     //return SearchBar(
-      //       //controller: controller,
-      //       padding: const WidgetStatePropertyAll<EdgeInsets>(
-      //         EdgeInsets.symmetric(horizontal: 16.0),
-      //       ),
-      //       onTap: () {
-      //         //controller.openView();
-      //       },
-      //       onChanged: (_) {
-      //         //controller.openView();
-      //       },
-      //       onSubmitted: (query) {
-      //         // Perform a search based on the query.
-      //       },
-      //       onTapOutside: (_) {
-
-      //       },
-
-
-      //       leading: const Icon(Icons.search),
-      //       hintText: 'Search',
-      //       shape: WidgetStatePropertyAll(
-      //         BeveledRectangleBorder(),
-      //       ),
-      //     //);
-      //   //},
-      //   //suggestionsBuilder: (BuildContext context, SearchController controller) {
-      //   //  return List<ListTile>.empty();
-      //   //},
-      // ),
+      
 
 
 
