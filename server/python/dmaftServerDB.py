@@ -130,15 +130,15 @@ def addChallenges(*, connection: sqlite3.Connection, challenges: list[bytes], pu
     if len(challenges) != len(publicKeys):
         raise ValueError("Challenge list must have the same number of items as the public key list!")
     
+    #No point in running if there's nothing to add or process.
+    if len(challenges) == 0:
+        return []
+
     result = executeQuery(connection = connection, query = 'SELECT ChallengeID from tblChallenges;')
     if result is None:
         #Unable to list the current UUIDs
         return False
     
-    #Uncomment this once testing is done. No point in operating if there's nothing to add.
-    #if len(challenges) == 0:
-    #    return None
-
     #Make sure that the new challenge IDs we generate don't conflict with any existing ones
     currentUUIDs = []
     for row in result:
@@ -160,7 +160,9 @@ def addChallenges(*, connection: sqlite3.Connection, challenges: list[bytes], pu
         with connection:
             stmt = 'INSERT INTO tblChallenges (ChallengeID, Challenge, UserPublicKey, ExpireTimestamp) VALUES (?,?,?,?);'
             connection.executemany(stmt, newRecords)
-        return True
+            connection.commit()
+        return newRecords
+    
     except Exception as e:
         print("Unable to complete operation: ", e)
         return False

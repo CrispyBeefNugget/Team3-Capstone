@@ -12,7 +12,8 @@ pingMsgFormat = {
 #CONNECT TO SERVER (SIGN UP OR LOG IN)
 connectMsgFormat = {
     'Command':'CONNECT',
-    'UserPublicKey':'', #public key data here in base64-encoded bytes
+    'UserPublicKeyMod':'', #public key modulus (n); should be BigInt
+    'UserPublicKeyExp':'', #public key exponent (e); should be Big int
     'ClientTimestamp': time.time(),
 }
 

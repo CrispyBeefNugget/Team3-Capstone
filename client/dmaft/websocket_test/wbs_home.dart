@@ -30,7 +30,7 @@ class DMAFT extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    testConnectionNoTLS();
+    testSendConnect();
     return const MaterialApp(
       home: SplashScreen(),
       debugShowCheckedModeBanner: false,

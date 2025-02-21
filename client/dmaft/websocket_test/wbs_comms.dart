@@ -1,8 +1,10 @@
 import 'dart:typed_data';
 
+import 'package:pointycastle/export.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import 'dart:convert';
+import 'asym_crypto.dart';
 
 //I'm currently testing with self-signed certs to avoid the overhead
 //of setting up a proper hosted server and Let's Encrypt.
@@ -45,6 +47,29 @@ void testConnection() async {
   });
 }
 
+void testSendConnect() async {
+  final pair = generateRSAkeyPair(exampleSecureRandom());
+  final public = pair.publicKey;
+  final private = pair.privateKey;
+  //final publicKeyBytes = public.
+
+  final wsUrl = Uri.parse('wss://10.0.2.2:8765');
+  print("Constructed wsUrl.");
+  final channel = WebSocketChannel.connect(wsUrl);
+  print("Created the channel.");
+  final connectJson = constructConnectRequest(public);
+  print("JSON is ready for sending.");
+
+  await channel.ready;
+  print("Channel is ready!");
+  channel.sink.add(connectJson);
+
+  channel.stream.listen((message) {
+    print(message);
+    channel.sink.close(status.normalClosure); //Can't use anything other than this; method only accepts error code 1000 (this) or range 3000-4999.
+  });
+}
+
 void testJson() {
   var json = constructPingRequest();
   print(json);
@@ -67,12 +92,13 @@ String constructPingRequest() {
   return encoder.convert(pingRequest);
 }
 
-String constructConnectRequest(Uint8List publicKeyBytes) {
+String constructConnectRequest(RSAPublicKey userPublicKey) {
   final currentTime = DateTime.timestamp();
-  const b64 = Base64Encoder();
+  
   final connectRequest = {
     'Command':'CONNECT',
-    'UserPublicKey': b64.convert(publicKeyBytes),
+    'UserPublicKeyMod': userPublicKey.modulus.toString(),
+    'UserPublicKeyExp': userPublicKey.publicExponent.toString(),
     'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
   };
   const encoder = JsonEncoder();

@@ -1,6 +1,6 @@
 /*
 CREDIT: https://github.com/bcgit/pc-dart/blob/master/tutorials/rsa.md
-This is boilerplate code from that side so far.
+This is mostly boilerplate code from that side so far.
 Luckily, it accomplishes everything we need.
 I'll develop this further to produce RSA keys and signatures
 required for server authentication.
@@ -34,6 +34,8 @@ AsymmetricKeyPair<RSAPublicKey, RSAPrivateKey> generateRSAkeyPair(
   return AsymmetricKeyPair<RSAPublicKey, RSAPrivateKey>(myPublic, myPrivate);
 }
 
+
+//Pass this method to generateRSAkeyPair as one of its arguments.
 SecureRandom exampleSecureRandom() {
 
   final secureRandom = SecureRandom('Fortuna')
@@ -54,6 +56,7 @@ Uint8List rsaSign(RSAPrivateKey privateKey, Uint8List dataToSign) {
   final sig = signer.generateSignature(dataToSign);
   return sig.bytes;
 }
+
 
 //Verify an RSA private key signature given the public key, data, and the signature.
 //This method assumes that the signature hash was made using SHA256.

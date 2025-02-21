@@ -24,7 +24,7 @@ class Comms {
   }
 
   void setServerIPv4(String ipv4) {
-    if (ipv4 == null || ipv4.isEmpty) {
+    if (ipv4.isEmpty) {
       throw ArgumentError('Comms.setServerIPv4(): Received null or empty IPv4 address. IPv4 format must be: xxx.xxx.xxx.xxx, where 0 <= xxx <= 255.');
     }
     RegExpMatch? match = ipv4Regex.firstMatch(ipv4);
