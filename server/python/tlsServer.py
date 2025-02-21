@@ -72,7 +72,7 @@ def handleConnectRequest(clientRequest: dict):
         challenge = result[0]
         clientRequest['ChallengeId'] = str(challenge[0])
         clientRequest['ChallengeData'] = base64.b64encode(challenge[1]).decode()
-        clientRequest['Sucessful'] = True
+        clientRequest['Successful'] = True
         clientRequest['ServerTimestamp'] = time.time()
         return clientRequest
     except:
@@ -80,7 +80,21 @@ def handleConnectRequest(clientRequest: dict):
 
 
 def handleChallengeResponse(clientRequest: dict):
-    raise NotImplementedError
+    keys = set(clientRequest.keys())
+    expectedKeys = {'Command','ChallengeId','Signature','HashAlgorithm','ClientTimestamp'}
+    if keys != expectedKeys:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more required JSON keys are missing from the request.')
+
+    if str(clientRequest['HashAlgorithm']).upper() != 'SHA256':
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Only SHA256 signatures are currently supported.')
+
+    if clientRequest['ChallengeId'] == '' or clientRequest['Signature'] == '':
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Both the ChallengeId and Signature must be non-empty.')
+
+    print("Received authentication request!")
+    print(clientRequest)
+
+    return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='The handleChallengeResponse() function is still in testing and development.')
 
 
 #Main dispatch function for all received requests
@@ -105,6 +119,7 @@ def handleRequest(clientRequest):
 
 
 async def listen(websocket):
+    print("Running the listen function now!")
     async for message in websocket:
         print("Received message!")
         try:

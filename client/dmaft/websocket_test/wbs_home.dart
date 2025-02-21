@@ -1,7 +1,7 @@
 import 'package:dmaft/wbs_comms.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'wbs_comms.dart';
+import 'true_comms.dart';
 import 'dart:io';
 
 /*
@@ -30,7 +30,7 @@ class DMAFT extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    testSendConnect();
+    testAuth();
     return const MaterialApp(
       home: SplashScreen(),
       debugShowCheckedModeBanner: false,
