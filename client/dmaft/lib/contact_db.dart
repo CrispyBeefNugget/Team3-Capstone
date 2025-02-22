@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:async';
@@ -10,7 +9,7 @@ by opening the emulated device in device explorer and navigating to "/data/data/
 accessible only by someone with root access and the app that made the database.
 */
 
-//Class to store contacts retrieved from the database.
+//Class to store contacts retrieved from and sent to the database.
 class Contact {
   final int id;
   String name;
@@ -77,7 +76,7 @@ class ContactDB{
   }
 
   //Adds a new contact to the database.
-  //Parameters: Contact object to be added. Note that all fields can't be null.
+  //Parameters: Contact object to be added. Note that no fields can be null.
   //Returns: Nothing.
   void addContact(Contact contact) async{
     final db = await database;
@@ -111,11 +110,16 @@ class ContactDB{
     //Use the search pattern to fetch only rows with some matching value(s).
     else{
       data = await db.rawQuery("""
-      SELECT * FROM $_contactsTableName WHERE
-      $_contactsIDName LIKE '%$searchPattern%' OR
-      $_contactsNameName LIKE '%$searchPattern%' OR
-      $_contactsBioName LIKE '%$searchPattern%'
-      """);
+      SELECT 
+      * 
+      FROM $_contactsTableName 
+      WHERE
+      $_contactsIDName LIKE %?% OR
+      $_contactsNameName LIKE %?% OR
+      $_contactsBioName LIKE %?%
+      """,
+      [searchPattern]
+      );
     }
     //Transform database data into a list of Contact objects
     List<Contact> contacts = data
@@ -137,8 +141,12 @@ class ContactDB{
     final db = await database;
     final userID = contact.id;
     await db.rawQuery("""
-    DELETE FROM $_contactsTableName WHERE $_contactsIDName = $userID
-    """);
+    DELETE FROM 
+    $_contactsTableName 
+    WHERE $_contactsIDName = ?
+    """,
+    [userID]
+    );
   }
 
   //Modify a contact entry in the database. Assumes that the userID was not changed.
@@ -147,15 +155,17 @@ class ContactDB{
   void modifyContact(Contact contact) async{
     final db = await database;
     await db.rawQuery("""
-    UPDATE 
-    $_contactsTableName 
-    SET 
-    $_contactsNameName = '${contact.name}', 
-    $_contactsBioName = '${contact.bio}', 
-    $_contactsPictureName = ${contact.pic}
-    WHERE 
-    $_contactsIDName = ${contact.id}
-    """);
+      UPDATE 
+      $_contactsTableName 
+      SET 
+      $_contactsNameName = ?, 
+      $_contactsBioName = ?
+      
+      WHERE 
+      $_contactsIDName = ?
+      """,
+      [contact.name, contact.bio, contact.id]
+    );
   }
 
   //Attempt to close the open database. Not required, but best practice.
