@@ -72,7 +72,6 @@ def getAllTableSchemas(*, connection: sqlite3.Connection):
             tables.append(item[0])
         for table in tables:
             schema = executeQuery(connection=connection, query="select sql from sqlite_master where type = 'table' and name = '" + table + "';") #FIX THIS TO USE SQL STATEMENT COMPLETION; BETTER SECURITY
-            print(schema)
             schemas.append(schema)
         return schemas
     except:
@@ -165,4 +164,20 @@ def addChallenges(*, connection: sqlite3.Connection, challenges: list[bytes], pu
     
     except Exception as e:
         print("Unable to complete operation: ", e)
+        return False
+    
+#Delete any expired challenges.
+#Should run this method BEFORE verifying a completed challenge.
+def pruneChallenges(*, connection: sqlite3.Connection):
+    try:
+        with connection:
+            pruneStmt = "DELETE FROM tblChallenges WHERE ExpireTimestamp < ?;"
+            currentTime = str(int(time.time()))
+            print("Current time is:", currentTime)
+            connection.execute(pruneStmt, [currentTime]) #This command expects a sequence/list for the substitution variable. currentTime must be wrapped in a list or else it uses individual str characters.
+            print("Successfully executed the delete command!")
+            connection.commit()
+        return True
+    except Exception as e:
+        print("Unable to complete challenge prune operation: ", e)
         return False

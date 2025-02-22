@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:dmaft/splash_screen.dart';
+import 'package:dmaft/true_comms.dart';
 import 'package:dmaft/wbs_comms.dart';
+
 
 /*
 UNCOMMENT THIS TO WEAKEN SECURITY AND ALLOW FOR SELF-SIGNED TLS CERTIFICATES
@@ -27,6 +29,7 @@ class DMAFT extends StatelessWidget {
   Widget build(BuildContext context) {
     //testConnectionNoTLS(); //Uncomment this to send a PING command to insecureServer.py.
     //testConnectionTLS(); //Uncomment this to send a PING command to tlsServer.py. Requires a valid certificate and private key.
+    //testAuth();          //Uncomment this to send a full test authentication handshake to the TLS server. Non-TLS doesn't support this.
     return MaterialApp(
       theme: ThemeData(
         useMaterial3: true,

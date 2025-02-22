@@ -60,6 +60,7 @@ def handleConnectRequest(clientRequest: dict):
     pubKeyBytes = pubKey.public_bytes(encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo)
     challengeBytes = random.randbytes(32)
     dbConn = dmaftServerDB.startDB()
+    dmaftServerDB.pruneChallenges(connection=dbConn) #Prevent attackers from brute-forcing old challenges later on
     result = dmaftServerDB.addChallenges(connection=dbConn, challenges=[challengeBytes], publicKeys=[pubKeyBytes])
 
     if type(result) is not list:
@@ -100,7 +101,6 @@ def handleChallengeResponse(clientRequest: dict):
 #Main dispatch function for all received requests
 def handleRequest(clientRequest):
     command = str(clientRequest['Command']).upper()
-
     if command == 'PING':
         return handlePingMsg(clientRequest)
         
