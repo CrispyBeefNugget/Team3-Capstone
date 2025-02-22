@@ -5,7 +5,7 @@ import 'dart:async';
 
 /*
 Note: Database files for Android apps are stored in the "/data/data/{package}/databases" folder in device storage. Access this in Android Studio 
-by opening the emulated device in device explorer and navigating to "/data/data/com.example.client_db/databases/contact_db". This folder is 
+by opening the emulated device in device explorer and navigating to "/data/data/{packagename}/databases/contact_db". This folder is 
 accessible only by someone with root access and the app that made the database.
 */
 
