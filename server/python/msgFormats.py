@@ -43,6 +43,7 @@ generalErrorFormat = {
     'Command':'', #client-provided command
     'Successful': False,
     'ErrorType': dict,
+    'RetryOperation': bool,
     'UserErrorMessage': str,
     'ClientTimestamp':'', #inherited from request
     'ServerTimestamp': time.time()
@@ -54,7 +55,7 @@ errorTypes = [
     {'ErrorType':'BadRequest'},
     {'ErrorType':'InvalidToken'},
     {'ErrorType':'InvalidResponse'},
-    {'ErrorType':'ChallengeExpired'}, #failed auth only
+    {'ErrorType':'InvalidChallengeId'}, #could either be due to the challenge expiring earlier or it just not existing. Basically the same situation since the table gets pruned BEFORE querying.
     {'ErrorType':'ServerInternalError'},
     {'ErrorType':'InvalidConversationId'},
     {

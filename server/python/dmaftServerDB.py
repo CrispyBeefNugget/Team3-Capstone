@@ -14,8 +14,8 @@ def executeQuery(*, connection: sqlite3.Connection, query: str):
     try:
         cursor = connection.cursor()
         cursor.execute(query)
-    except:
-        raise RuntimeError("dmaftServerDB.executeQuery(): Provided query failed to execute.")
+    except Exception as e:
+        raise e
     
     results = cursor.fetchall()
     return results
@@ -122,9 +122,11 @@ def startDB():
     
     return conn
 
-
+#DATABASE OPERATION METHODS
 #IMPORTANT: All methods below assume that a valid server is running with the schema described above.
 
+#Generates and adds authentication challenges to the challenge table.
+#Returns the list of generated challenge rows if successful, or None if failed.
 def addChallenges(*, connection: sqlite3.Connection, challenges: list[bytes], publicKeys: list[bytes]):
     if len(challenges) != len(publicKeys):
         raise ValueError("Challenge list must have the same number of items as the public key list!")
@@ -136,7 +138,7 @@ def addChallenges(*, connection: sqlite3.Connection, challenges: list[bytes], pu
     result = executeQuery(connection = connection, query = 'SELECT ChallengeID from tblChallenges;')
     if result is None:
         #Unable to list the current UUIDs
-        return False
+        return None
     
     #Make sure that the new challenge IDs we generate don't conflict with any existing ones
     currentUUIDs = []
@@ -164,20 +166,92 @@ def addChallenges(*, connection: sqlite3.Connection, challenges: list[bytes], pu
     
     except Exception as e:
         print("Unable to complete operation: ", e)
-        return False
+        return None
     
+
 #Delete any expired challenges.
 #Should run this method BEFORE verifying a completed challenge.
+#Returns a bool describing its success.
 def pruneChallenges(*, connection: sqlite3.Connection):
     try:
         with connection:
             pruneStmt = "DELETE FROM tblChallenges WHERE ExpireTimestamp < ?;"
             currentTime = str(int(time.time()))
-            print("Current time is:", currentTime)
             connection.execute(pruneStmt, [currentTime]) #This command expects a sequence/list for the substitution variable. currentTime must be wrapped in a list or else it uses individual str characters.
-            print("Successfully executed the delete command!")
             connection.commit()
         return True
     except Exception as e:
         print("Unable to complete challenge prune operation: ", e)
+        return False
+
+
+#Returns a list if successful, and None if failed.
+#Throws an exception if it cannot prune the challenge database first.
+def getChallenge(*, connection: sqlite3.Connection, challengeId: str):
+    #For security reasons, prune the challenge table BEFORE querying it.
+    if not pruneChallenges(connection=connection):
+        raise RuntimeError("Unable to remove expired challenges from the database!")
+    
+    try:
+        with connection:
+            stmt = 'SELECT * FROM tblChallenges WHERE ChallengeID = ?;'
+            cursor = connection.execute(stmt, [challengeId])
+            results = cursor.fetchall()
+            return results
+    except Exception as e:
+        print("Unable to query the challenge table: ", e)
+        return None
+
+
+#Deletes all challenges with the given UUID.
+#Returns True if successful and False if not.
+#IMPORTANT: SQLite3 still returns True if a valid deletion command targets zero records.
+#Therefore, if this command returns False, you should assume that one or more target records still remain.
+def deleteChallengesWithUUID(*, connection: sqlite3.Connection, challengeId: str):
+    #Pruning shouldn't be necessary as we're not retrieving any data, just deleting
+    try:
+        with connection:
+            pruneStmt = "DELETE FROM tblChallenges WHERE ChallengeID = ?;"
+            connection.execute(pruneStmt, [challengeId]) #This command expects a sequence/list for the substitution variable. currentTime must be wrapped in a list or else it uses individual str characters.
+            connection.commit()
+        return True
+    except Exception as e:
+        print("Unable to delete target records: ", e)
+        return False
+
+#Adds a new user to the system if they don't already exist.
+#If their public key hash already exists, this operation does nothing and returns True.
+#If it doesn't exist, this operation adds them to the database with no conversations and returns True.
+#If this function returns False, assume an error has occurred.
+def registerPublicKeyHash(*, connection: sqlite3.Connection, publicKeyHashStr: str):
+    #Check if this user already exists.
+    if len(publicKeyHashStr) > 128:
+        raise ValueError("The provided hash is too long and is invalid.")
+    
+    try:
+        searchStmt = "SELECT FROM tblRegisteredUsers WHERE UserPublicKeySHA2_512 = ?;"
+        cursor = connection.execute(searchStmt, [publicKeyHashStr])
+        results = cursor.fetchall()
+    except Exception as e:
+        print("Unable to search the registeredUsers table: ", e)
+        return False
+    
+    if len(results) == 1:
+        #User is already registered. Stop with success.
+        return True
+    
+    elif len(results) > 1:
+        #This should be impossible. Either the database is corrupt or there's a runtime error happening.
+        #In either case, stop.
+        raise RuntimeError("Multiple records were returned when searching the registeredUsers table by a public key hash.")
+    
+    #The provided public key hash isn't registered yet.
+    #Register it.
+    try:
+        with connection:
+            registerStmt = 'INSERT INTO tblRegisteredUsers (UserPublicKeySHA2_512) VALUES (?);'
+            connection.execute(registerStmt, publicKeyHashStr)
+            connection.commit()
+    except Exception as e:
+        print("Failed to register the specified public key hash: ", e)
         return False

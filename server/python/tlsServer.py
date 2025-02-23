@@ -2,6 +2,8 @@ import asyncio
 import bcrypt #Token secret hash conversion
 import base64
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 import hashlib
 import json
@@ -62,6 +64,7 @@ def handleConnectRequest(clientRequest: dict):
     dbConn = dmaftServerDB.startDB()
     dmaftServerDB.pruneChallenges(connection=dbConn) #Prevent attackers from brute-forcing old challenges later on
     result = dmaftServerDB.addChallenges(connection=dbConn, challenges=[challengeBytes], publicKeys=[pubKeyBytes])
+    dbConn.close()
 
     if type(result) is not list:
         return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to produce an authentication challenge.')
@@ -95,6 +98,53 @@ def handleChallengeResponse(clientRequest: dict):
     print("Received authentication request!")
     print(clientRequest)
 
+    #Find the challenge and retrieve the stored public key.
+    #Remember, the public key was serialized as DER and the format was SubjectPublicKeyInfo.
+    dbConn = dmaftServerDB.startDB()
+    try:
+        challenges = dmaftServerDB.getChallenge(connection=dbConn, challengeId=clientRequest['ChallengeId'])
+    except:
+        dbConn.close()
+        return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='Failed to prune the server challenge database before verifying the signature.')
+    
+    if type(challenges) is not list:
+        dbConn.close()
+        return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='Failed to query the server challenge database. Please try again.')
+
+    elif len(challenges) != 1:
+        dbConn.close()
+        return makeError(clientRequest=clientRequest, errorCode='InvalidChallengeId', reason='The specified challenge does not exist. Please request a new challenge.')
+
+    #We got exactly one match.
+    #Delete the challenge from the DB so it can't be used in a (quick) replay attack.
+    #Then, import the public key from the result in 'record' and verify the provided signature.
+    if not dmaftServerDB.deleteChallengesWithUUID(connection=dbConn, challengeId=clientRequest['ChallengeId']):
+        dbConn.close()
+        return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='')
+
+    record = challenges[0]
+    challengeId, challenge, publicKeyBytes, expireTimestamp = record
+    userPublicKey = serialization.load_der_public_key(publicKeyBytes)
+    sigBytes = base64.b64decode(clientRequest['Signature'])
+    try:
+        #If this succeeds without an exception, the signature is valid.
+        userPublicKey.verify(
+            signature=sigBytes,
+            data=challenge,
+            padding=padding.PKCS1v15(),
+            algorithm=hashes.SHA256()
+            )
+    except:
+        #The challenge signature is invalid. Treat as if a wrong password was entered; deny access.
+        return makeError(clientRequest=clientRequest, errorCode='InvalidResponse', reason='The challenge signature could not be verified. Please request a new challenge.')
+
+    #The client is now authenticated!
+    #Register them, then issue a token.
+    pubKeyHashStr = getRSAPublicKeySHA512(userPublicKey)
+    if not dmaftServerDB.registerPublicKeyHash(connection=dbConn, publicKeyHashStr=pubKeyHashStr):
+        return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to register (or verify registration) of the provided public key. Please request a new challenge.')
+
+    
     return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='The handleChallengeResponse() function is still in testing and development.')
 
 
@@ -147,10 +197,11 @@ async def main():
         print("Started server websocket, listening...")
         await server.serve_forever()
 
-def makeError(*, clientRequest: dict, errorCode, reason: str):
+def makeError(*, clientRequest: dict, retry: bool = False, errorCode, reason: str):
     jsonMsg = {
         'Successful': False,
         'ErrorType':errorCode,
+        'RetryOperation':retry, #Usually false, should only be true when the server experienced a transient error.
         'UserErrorMessage':reason,
         'ServerTimestamp':time.time(),
     }
