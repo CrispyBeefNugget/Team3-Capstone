@@ -1,0 +1,2 @@
+/Users/Nigel/Library/CloudStorage/OneDrive-NorthwesternPolytechnic/Documents/GitHub/Team3-Capstone/client/dmaft/android/app/.cxx/Debug/3x411c4d/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/Nigel/Library/CloudStorage/OneDrive-NorthwesternPolytechnic/Documents/GitHub/Team3-Capstone/client/dmaft/android/app/.cxx/Debug/3x411c4d/armeabi-v7a/CMakeFiles/rebuild_cache.dir
