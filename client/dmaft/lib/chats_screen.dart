@@ -8,6 +8,36 @@ class ChatsScreen extends StatefulWidget {
 }
 
 class _ChatsScreenState extends State<ChatsScreen> {
+
+  List<String> testList = [
+    'Arthur Ayala',
+    'Giovanna Pritchett',
+    'Alexus Jeter'
+    'Jett Cotter',
+  ];
+
+  bool isSelectionMode = false;
+  late List<bool> _selected;
+  bool _selectAll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    initializeSelection();
+  }
+
+  void initializeSelection() {
+    testList.sort();
+    testList.add('Test Test');
+    _selected = List<bool>.generate(testList.length, (_) => false);
+  }
+
+  @override
+  void dispose() {
+    _selected.clear();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

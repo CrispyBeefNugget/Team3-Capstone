@@ -9,6 +9,8 @@ class ContactsScreen extends StatefulWidget {
 
 class _ContactsScreenState extends State<ContactsScreen> {
 
+  final TextEditingController _searchController = TextEditingController();
+
   List<String> testList = [
     'Dallin Parry',
     'Kacey Tharp',
@@ -32,8 +34,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
     'Carol Hargrove',
   ];
 
-  List<String> filteredList = [];
+  List<String> _filteredList = [];
 
+  bool isSearchingMode = false;
   bool isSelectionMode = false;
   late List<bool> _selected;
   bool _selectAll = false;
@@ -42,6 +45,11 @@ class _ContactsScreenState extends State<ContactsScreen> {
   void initState() {
     super.initState();
     initializeSelection();
+
+    _filteredList = testList;
+    _searchController.addListener(_performSearch);
+
+    
   }
 
   void initializeSelection() {
@@ -56,94 +64,135 @@ class _ContactsScreenState extends State<ContactsScreen> {
     super.dispose();
   }
 
+  Future<void> _performSearch() async {
+    setState(() {
+      if (isSelectionMode) {
+        _searchController.text = '';
+      }
+      if (_searchController.text != '') {
+        isSearchingMode = true;
+        _filteredList = testList
+          .where((element) => element
+            .toLowerCase()
+            .startsWith(_searchController.text.toLowerCase()))
+          .toList();
+      }
+      else {
+        isSearchingMode = false;
+        _filteredList = testList;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
 
       appBar: AppBar(
-        leading: 
-          isSelectionMode
-            ? IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () {
-                setState(() {
-                  isSelectionMode = false;
-                });
-                initializeSelection();
-              },
-            )
-            : const SizedBox(),
-        
+        leading: Icon(Icons.search),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: Colors.grey,
+              width: 2,
+            ),
+            borderRadius: BorderRadius.circular(6),
+            color: Colors.white,
+          ),
+        ),
+        title: TextField(
+          controller: _searchController,
+          style: const TextStyle(color: Colors.black),
+          cursorColor: Colors.black,
+          decoration: const InputDecoration(
+            hintText: 'Search Contacts',
+            hintStyle: TextStyle(color: Colors.black),
+            border: InputBorder.none,
+          ),
+        ),
         actions: <Widget>[
-          if (isSelectionMode)
-            TextButton(
-              child:
-                !_selectAll
-                  ? const Text('select all', style: TextStyle(color: Colors.black))
-                  : const Text('unselect all', style: TextStyle(color: Colors.black)),
+          if (isSearchingMode)
+            IconButton(
               onPressed: () {
-                _selectAll = !_selectAll;
-                setState(() {
-                  _selected = List<bool>.generate(testList.length, (_) => _selectAll);
-                });
+                _searchController.text = '';
               },
+              icon: Icon(Icons.close)
             ),
         ],
       ),
 
-      body: Column(
-        children: <Widget>[
-          
+      body: Scaffold(
+        appBar: AppBar(
+          leading: 
+            isSelectionMode
+              ? IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    setState(() {
+                      isSelectionMode = false;
+                    });
+                    initializeSelection();
+                  },
+              )
+              : const SizedBox(),
+          actions: <Widget>[
+            if (isSelectionMode)
+              TextButton(
+                child:
+                  !_selectAll
+                    ? const Text('select all', style: TextStyle(color: Colors.black))
+                    : const Text('unselect all', style: TextStyle(color: Colors.black)),
+                onPressed: () {
+                  _selectAll = !_selectAll;
+                  setState(() {
+                    _selected = List<bool>.generate(testList.length, (_) => _selectAll);
+                  });
+                },
+              ),
+          ],
+          toolbarHeight:
+            isSelectionMode ? 50 : 0,
+        ),
 
-          SearchBar(
-            padding: const WidgetStatePropertyAll<EdgeInsets>(
-              EdgeInsets.symmetric(horizontal: 16.0),
-            ),
-            onTap: () {
-              //controller.openView();
-            },
-            onChanged: (_) {
-              //controller.openView();
-            },
-            onSubmitted: (query) {
-              // Perform a search based on the query.
-            },
-            onTapOutside: (_) {
+        body:
+          isSearchingMode
+          ? ListView.builder(
+            itemCount: _filteredList.length,
+            itemBuilder: (context, index) => ListTile(
+              leading: Icon(Icons.person),
+              title: Text(
+                _filteredList[index],
+                style: const TextStyle(color: Colors.black),
+              ),
+              onTap: () => {
+                if (isSelectionMode) {
 
-            },
-
-
-            leading: const Icon(Icons.search),
-            hintText: 'Search',
-            shape: WidgetStatePropertyAll(
-              BeveledRectangleBorder(),
-            ),
-          ),
-
-          Expanded(
-            child: ListBuilder(
-              contactList: testList,
-              isSelectionMode: isSelectionMode,
-              selectedList: _selected,
-              onSelectionChange: (bool x) {
-                setState(() {
-                  isSelectionMode = x;
-                });
+                }
               },
+              trailing:
+                isSelectionMode
+                  ? Checkbox(
+                    value: _selected[index],
+                    onChanged: (bool? x) => {
+                      setState(() {
+                        _selected[index] = !_selected[index];
+                      })
+                    },
+                  )
+                  : const SizedBox.shrink(),
             ),
+          )
+          : ListBuilder(
+            contactList: testList,
+            isSelectionMode: isSelectionMode,
+            selectedList: _selected,
+            onSelectionChange: (bool x) {
+              setState(() {
+                isSelectionMode = x;
+              });
+            },
           ),
-          
-
-
-        ],
-        
       ),
-
-      
-
-
-
-
     );
   }
 }
@@ -181,6 +230,7 @@ class _ListBuilderState extends State<ListBuilder> {
       itemCount: widget.selectedList.length,
       itemBuilder: (_, int index) {
         return ListTile(
+          leading: Icon(Icons.person),
           onTap: () => _toggle(index),
           onLongPress: () {
             if (!widget.isSelectionMode) {

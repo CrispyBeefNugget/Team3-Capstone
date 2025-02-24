@@ -1,0 +1,2 @@
+C:/Users/jclar/OneDrive/Documents/CS4996/Team3-Capstone/client/dmaft/android/app/.cxx/Debug/5r2j3f5j/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/jclar/OneDrive/Documents/CS4996/Team3-Capstone/client/dmaft/android/app/.cxx/Debug/5r2j3f5j/armeabi-v7a/CMakeFiles/rebuild_cache.dir
