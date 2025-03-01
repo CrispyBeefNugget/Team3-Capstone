@@ -4,6 +4,8 @@ import 'package:dmaft/contacts_screen.dart';
 import 'package:dmaft/chats_screen.dart';
 import 'package:dmaft/settings_screen.dart';
 
+import 'package:dmaft/chat_test_list.dart';
+
 class AppScreen extends StatefulWidget {
   const AppScreen({super.key});
 
@@ -12,6 +14,9 @@ class AppScreen extends StatefulWidget {
 }
 
 class _AppScreenState extends State<AppScreen> {
+
+  int unread = ChatTestList.getSize();
+
   int myIndex = 1; // Default page on app startup.
   List<Widget> widgetList = const [
     Text(
@@ -38,6 +43,27 @@ class _AppScreenState extends State<AppScreen> {
       ),
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _incrementCounter();
+  }
+
+  void _incrementCounter() async {
+    while (true) {
+      await Future.delayed(Duration(seconds: 5));
+      ChatTestList.addToList('Test Test');
+      setState(() {
+        unread = ChatTestList.getSize();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +104,7 @@ class _AppScreenState extends State<AppScreen> {
         indicatorColor: const Color.fromRGBO(4, 150, 255, 1),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         selectedIndex: myIndex,
-        destinations: const <Widget>[
+        destinations: <Widget>[
           NavigationDestination(
             icon: Icon(
               Icons.contact_page,
@@ -87,7 +113,7 @@ class _AppScreenState extends State<AppScreen> {
           ),
           NavigationDestination(
             icon: Badge(
-              label: Text('2'), // unread messages
+              label: Text('$unread'), // unread messages
               child: Icon(Icons.message_rounded),
             ),
             label: 'Chats',
