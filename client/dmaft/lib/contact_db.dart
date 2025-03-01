@@ -11,21 +11,23 @@ accessible only by someone with root access and the app that made the database.
 
 //Class to store contacts retrieved from and sent to the database.
 class Contact {
-  final int id;
+  final String id;
   String name;
+  String status;
   String bio;
   Uint8List pic;
 
   Contact({
     required this.id,
     required this.name,
+    required this.status,
     required this.bio,
     required this.pic,
   });
 
   //Test function used to view contact attributes more easily.
   List<dynamic> getContactAttr(){
-    return [id, name, bio, pic];
+    return [id, name, status, bio, pic];
   }
 }
 
@@ -38,6 +40,7 @@ class ContactDB{
   final String _contactsTableName = "contactTable";
   final String _contactsIDName = "userID";
   final String _contactsNameName = "userName";
+  final String _contactsStatusName = "userStatus";
   final String _contactsBioName = "userBio";
   final String _contactsPictureName = "userProfilePic";
   //If a db is already open, return it. Otherwise, open the db.
@@ -65,8 +68,9 @@ class ContactDB{
       onCreate: (db, version) { 
         db.execute("""
         CREATE TABLE $_contactsTableName (
-          $_contactsIDName INTEGER PRIMARY KEY, 
+          $_contactsIDName TEXT PRIMARY KEY, 
           $_contactsNameName TEXT NOT NULL, 
+          $_contactsStatusName TEXT NOT NULL,
           $_contactsBioName TEXT NOT NULL,
           $_contactsPictureName BLOB NOT NULL
         )
@@ -94,6 +98,7 @@ class ContactDB{
       {
         _contactsIDName: contact.id,
         _contactsNameName: contact.name,
+        _contactsStatusName: contact.status,
         _contactsBioName: contact.bio,
         _contactsPictureName: contact.pic,
       }
@@ -125,17 +130,19 @@ class ContactDB{
       WHERE
       $_contactsIDName LIKE ? OR
       $_contactsNameName LIKE ? OR
+      $_contactsStatusName LIKE ? OR
       $_contactsBioName LIKE ?
       """,
-      ["%$searchPattern%", "%$searchPattern%", "%$searchPattern%"]
+      ["%$searchPattern%", "%$searchPattern%", "%$searchPattern%", "%$searchPattern%"]
       );
     }
     //Transform database data into a list of Contact objects
     List<Contact> contacts = data
       .map(
         (e) => Contact( //Map database data into Contact class fields.
-          id: e[_contactsIDName] as int, 
+          id: e[_contactsIDName] as String, 
           name: e[_contactsNameName] as String,
+          status: e[_contactsStatusName] as String,
           bio: e[_contactsBioName] as String,  
           pic: e[_contactsPictureName] as Uint8List,
         )
@@ -171,13 +178,14 @@ class ContactDB{
       UPDATE 
       $_contactsTableName 
       SET 
-      $_contactsNameName = ?, 
+      $_contactsNameName = ?,
+      $_contactsStatusName = ?, 
       $_contactsBioName = ?
       
       WHERE 
       $_contactsIDName = ?
       """,
-      [contact.name, contact.bio, contact.id]
+      [contact.name, contact.status, contact.bio, contact.id]
     );
   }
 }

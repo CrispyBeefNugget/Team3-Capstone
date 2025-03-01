@@ -6,11 +6,11 @@ import 'package:dmaft/chatlog_db.dart';
 void main () async{
   WidgetsFlutterBinding.ensureInitialized();
   final ContactDB databaseservice = ContactDB.instance; //Access Contacts Database class.
-  Contact user1 = Contact(id: 142445, name: "test101name", bio: "testbio", pic: Uint8List(8));
-  Contact user2 = Contact(id: 242445, name: "test102name", bio: "testbio2", pic: Uint8List(8));
-  Contact user3 = Contact(id: 35, name: "t", bio: "testbio2", pic: Uint8List(8));
-  Contact user4 = Contact(id: 351, name: "t", bio: "testbio2", pic: Uint8List(8));
-  //databaseservice.addContact(user1);
+  Contact user1 = Contact(id: "142445", name: "test101name", status: "teststatus", bio: "testbio", pic: Uint8List(8));
+  Contact user2 = Contact(id: "242445", name: "test102name", status: "teststatus2", bio: "testbio2", pic: Uint8List(8));
+  Contact user3 = Contact(id: "35", name: "t", status: "teststatus3", bio: "testbio2", pic: Uint8List(8));
+  Contact user4 = Contact(id: "351", name: "t", status: "teststatus4", bio: "testbio2", pic: Uint8List(8));
+  databaseservice.addContact(user1);
   //databaseservice.addContact(user2);
   //databaseservice.addContact(user3);
   List<Contact> contactlist = await databaseservice.getContacts();
