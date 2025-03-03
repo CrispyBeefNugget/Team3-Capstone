@@ -48,10 +48,11 @@ void initRandomUserKeys() {
   }
 }
 
+
 void testAuth() async {
   initRandomUserKeys();
   final serverChannel = await connectToServer('wss://10.0.2.2:8765');
-  final connectRequest = constructConnectRequest(publicKey);
+  final connectRequest = constructConnectRequest(publicKey, '');
   serverChannel.sink.add(connectRequest);
   //Watch the rest play out from here! :D
 }
@@ -162,14 +163,21 @@ RSASignature rsaSignSHA256(RSAPrivateKey privateKey, Uint8List data) {
   return signer.generateSignature(data);
 }
 
-String constructConnectRequest(RSAPublicKey userPublicKey) {
+String constructConnectRequest(RSAPublicKey userPublicKey, String userID) {
+  String register = 'False';
+  if (userID == '') {
+    register = 'True';
+  }
+
   final currentTime = DateTime.timestamp();
   
   final connectRequest = {
     'Command':'CONNECT',
     'UserPublicKeyMod': userPublicKey.modulus.toString(),
     'UserPublicKeyExp': userPublicKey.publicExponent.toString(),
-    'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt(), //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    'Register': register,
+    'UserId': userID,
   };
   const encoder = JsonEncoder();
   return encoder.convert(connectRequest);

@@ -1,5 +1,4 @@
 import asyncio
-import bcrypt #Token secret hash conversion
 import base64
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -14,6 +13,7 @@ import websockets
 import websockets.asyncio
 import websockets.asyncio.server
 
+import crypto
 import dmaftServerDB
 
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -22,7 +22,6 @@ ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
 ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
 
 ssl_context.load_cert_chain(ssl_cert, keyfile=ssl_key)
-
 
 def getRSAPublicKeySHA512(pubkey: rsa.RSAPublicKey):
     pubBytes = pubkey.public_bytes(encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo)
@@ -40,9 +39,26 @@ def handlePingMsg(clientRequest: dict):
 def handleConnectRequest(clientRequest: dict):
     #Make sure we got a valid request
     keys = set(clientRequest.keys())
-    expectedKeys = {'Command','UserPublicKeyMod','UserPublicKeyExp','ClientTimestamp'}
+    expectedKeys = {'Command','UserPublicKeyMod','UserPublicKeyExp','ClientTimestamp','UserId','Register'}
     if keys != expectedKeys:
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more required JSON keys are missing from the request.')
+
+    if clientRequest['UserId'] in ['',None] and clientRequest['Register'] not in ['True','true', True]:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Received challenge request with Register set to False and no UserId specified. Set Register to True to request a new account, or specify an existing UserId to log in to.')
+
+
+    #If the client specified an account, make sure that user first exists
+    if clientRequest['UserId'] not in ['',None]:
+        dbConn = dmaftServerDB.startDB()
+        try:
+            if not dmaftServerDB.doesUserExist(connection=dbConn, userID=clientRequest['UserId']):
+                dmaftServerDB.closeDB(dbConn)
+                return makeError(clientRequest=clientRequest, errorCode='InvalidUserId', reason='The specified UserId does not exist. Please specify a different user or send a registration request.')
+        except:
+            dmaftServerDB.closeDB(dbConn)
+            return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', retry=True, reason='Failed to query the database to check if the specified user is registered.')
+
+        dmaftServerDB.closeDB(dbConn)
 
     #Parse the key components into a valid RSA key
     try:
@@ -59,11 +75,14 @@ def handleConnectRequest(clientRequest: dict):
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Failed to construct the RSA public key from the given parameters.')
 
     #Create the challenge and send it to the client
+    if clientRequest['UserId'] == '':
+        clientRequest['UserId'] == None #Sanitize blank ID before sending to query
+
     pubKeyBytes = pubKey.public_bytes(encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo)
     challengeBytes = random.randbytes(32)
     dbConn = dmaftServerDB.startDB()
     dmaftServerDB.pruneChallenges(connection=dbConn) #Prevent attackers from brute-forcing old challenges later on
-    result = dmaftServerDB.addChallenges(connection=dbConn, challenges=[challengeBytes], publicKeys=[pubKeyBytes])
+    result = dmaftServerDB.addChallenges(connection=dbConn, challenges=[challengeBytes], publicKeys=[pubKeyBytes], userIDs=[clientRequest['UserId']])
     dbConn.close()
 
     if type(result) is not list:
@@ -102,10 +121,11 @@ def handleChallengeResponse(clientRequest: dict):
     #Remember, the public key was serialized as DER and the format was SubjectPublicKeyInfo.
     dbConn = dmaftServerDB.startDB()
     try:
-        challenges = dmaftServerDB.getChallenge(connection=dbConn, challengeId=clientRequest['ChallengeId'])
-    except:
+        challenges = dmaftServerDB.getChallenge(connection=dbConn, challengeID=clientRequest['ChallengeId'])
+    except Exception as e:
+        print("dmaftserverDB.getChallenges() failed.")
         dbConn.close()
-        return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='Failed to prune the server challenge database before verifying the signature.')
+        return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='dmaftServerDB.getChallenge() failed.')
     
     if type(challenges) is not list:
         dbConn.close()
@@ -116,14 +136,14 @@ def handleChallengeResponse(clientRequest: dict):
         return makeError(clientRequest=clientRequest, errorCode='InvalidChallengeId', reason='The specified challenge does not exist. Please request a new challenge.')
 
     #We got exactly one match.
-    #Delete the challenge from the DB so it can't be used in a (quick) replay attack.
+    #Delete the challenge from the DB so it can't be used in a replay attack.
     #Then, import the public key from the result in 'record' and verify the provided signature.
-    if not dmaftServerDB.deleteChallengesWithUUID(connection=dbConn, challengeId=clientRequest['ChallengeId']):
+    if not dmaftServerDB.deleteChallengesWithUUID(connection=dbConn, challengeID=clientRequest['ChallengeId']):
         dbConn.close()
         return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='')
 
     record = challenges[0]
-    challengeId, challenge, publicKeyBytes, expireTimestamp = record
+    challengeId, challenge, publicKeyBytes, userId, expireTimestamp = record
     userPublicKey = serialization.load_der_public_key(publicKeyBytes)
     sigBytes = base64.b64decode(clientRequest['Signature'])
     try:
@@ -139,13 +159,35 @@ def handleChallengeResponse(clientRequest: dict):
         return makeError(clientRequest=clientRequest, errorCode='InvalidResponse', reason='The challenge signature could not be verified. Please request a new challenge.')
 
     #The client is now authenticated!
-    #Register them, then issue a token.
-    pubKeyHashStr = getRSAPublicKeySHA512(userPublicKey)
-    if not dmaftServerDB.registerPublicKeyHash(connection=dbConn, publicKeyHashStr=pubKeyHashStr):
-        return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to register (or verify registration) of the provided public key. Please request a new challenge.')
+    dbConn = dmaftServerDB.startDB()
+    if userId in [None,'']:
+        #The user doesn't exist yet. Register them.
+        newUserId = dmaftServerDB.registerUser(connection=dbConn, publicKey=userPublicKey)
+        if newUserId is None:
+            dmaftServerDB.closeDB(dbConn)
+            return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to register the new user record after successful authentication. Please request a new challenge.')
 
+        userId = newUserId
+        print("Successfully created a new userId!")
+
+    #Issue the user a token and construct a response
+    token = dmaftServerDB.createToken(connection=dbConn, userID=userId)
+    print("Created the token!")
+    if token is None:
+        #Token creation failed. Provide a fake token with the real user ID to the client. They can get a new token on their own using that info.
+        dmaftServerDB.closeDB(dbConn)
+        clientRequest['Successful'] = True
+        clientRequest['UserId'] = userId
+        clientRequest['TokenId'] = ''
+        clientRequest['TokenSecret'] = ''
+        return clientRequest
     
-    return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='The handleChallengeResponse() function is still in testing and development.')
+    #Token creation succeeded. Send it back for the client to use.
+    clientRequest['Successful'] = True
+    clientRequest['UserId'] = token['UserId']
+    clientRequest['TokenId'] = token['TokenId']
+    clientRequest['TokenSecret'] = base64.b64encode(token['TokenSecret']).decode()
+    return clientRequest
 
 
 #Main dispatch function for all received requests
@@ -181,6 +223,7 @@ async def listen(websocket):
         
         try:
             serverReply = handleRequest(clientRequest)
+            print("Sending to client:", serverReply)
             await websocket.send(json.dumps(serverReply))
             print("Successfully processed request.\n")
         except Exception as e:
