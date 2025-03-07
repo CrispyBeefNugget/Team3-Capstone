@@ -6,36 +6,59 @@ import 'dart:async';
 
 /*
 Note: Database files for Android apps are stored in the "/data/data/{package}/databases" folder in device storage. Access this in Android Studio 
-by opening the emulated device in device explorer and navigating to "/data/data/{package name}/databases/contact_db". This folder is 
+by opening the emulated device in device explorer and navigating to "/data/data/{package name}/databases/ChatLog_DB.db". This folder is 
 accessible only by someone with root access and the app that made the database.
 */
 
+//Class to store contacts retrieved from and sent to the database.
+class Contact {
+  final String id; //The unique userID of the user.
+  String name; //The non-unique username of the user.
+  String status; //The user's status, a short message indicating a current mood or other tidbit.
+  String bio; //The user's biography as set in their profile. 
+  Uint8List pic; //A list of 8-bit unsigned integers containing a representation of the user's profile picture.
+
+  Contact({
+    required this.id,
+    required this.name,
+    required this.status,
+    required this.bio,
+    required this.pic,
+  });
+
+  //Test function used to view contact attributes more easily.
+  List<dynamic> getContactAttr(){
+    return [id, name, status, bio, pic];
+  }
+}
+
+
+//Class to store conversations retrieved from and sent to the database.
+
+
 //Class to store chat logs retrieved from and sent to the database.
 class ChatLog {
-  final int convoID; //The ID for the chat conversation in which the message was sent.
-  final int msgID; //The unique ID for the message.
-  final int senderID; //UserID for the message's sender.
-  final DateTime sentTime; //Time the sender sent the message.
-  final DateTime rcvTime; //Time the recipient received the message.
-  //Maybe add most recent update time too?
-  int msgLength; //Length in bytes of the message contents sent.
+  final String convoID; //The ID for the chat conversation in which the message was sent.
+  final String msgID; //The unique ID for the message.
+  final String senderID; //UserID for the message's sender.
+  final String rcvTime; //Time the server received the message. May not align with the time the recipient's client gets the message if they were offline.
   Uint8List message; //Message, file, etc. sent to the recipient.
 
   ChatLog({
     required this.convoID,
     required this.msgID,
     required this.senderID,
-    required this.sentTime,
     required this.rcvTime,
-    required this.msgLength,
     required this.message,
   });
 
   //Test function used to view chat log attributes more easily.
   List<dynamic> getChatLogAttr(){
-    return [convoID, msgID, senderID, sentTime, rcvTime, msgLength, message];
+    return [convoID, msgID, senderID, rcvTime, message];
   }
 }
+
+
 
 //Class for ChatLog Database operations.
 class ChatLogDB{
@@ -44,9 +67,7 @@ class ChatLogDB{
   //Store column names for easier code revision
   final String _chatlogsMessageIDName = "msgID";
   final String _chatlogsSenderIDName = "senderID";
-  final String _chatlogsSentTimeName = "sendTime";
   final String _chatlogsReceivedTimeName = "receivedTime";
-  final String _chatlogsMsgLengthName = "msgLength";
   final String _chatlogsMessageName = "message";
 
   ChatLogDB._constructor();
@@ -58,6 +79,9 @@ class ChatLogDB{
     return _db!;
   }
 
+
+
+  //Method: getDatabase.
   //Opens the chat log database and returns the database object. Automatically called during ChatLogDB instance construction.
   //Parameters: None.
   //Returns: Sqflite Database object.
@@ -69,29 +93,41 @@ class ChatLogDB{
     final database = await openDatabase(
       dbPath,
       version: 1,
+      //When a new database is created, create the ? table.
+      onCreate: (db, version) { 
+        db.execute("""
+        CREATE TABLE "" (
+          
+        )
+        """);
+      }
     );
-    //Note that no tables are created on database creation.
+    
     return database;
   }
 
+
+
+  //Method: addChatLog.
   //Adds a new chat log to the database. Creates a table for the conversation if needed.
   //Parameters: ChatLog object to be added. Note that no fields can be null.
   //Returns: Nothing.
   void addChatLog(ChatLog chatlog) async{
     final db = await database;
-    //Check if a table already exists for the conversation.
+    //Check if a table already exists for the conversation. Query returns a list containing a map with "COUNT(*)" as the key and the count as the value.
     dynamic tables = await db.rawQuery("""
-      SELECT count(*) FROM sqlite_master WHERE type = "table" AND name = ?
+      SELECT COUNT(*) 
+      FROM sqlite_master 
+      WHERE type = 'table' 
+      AND name = ?
     """, [chatlog.convoID]);
     //Table does not exist, so create one.
-    if(tables == 0){
+    if(tables[0]["COUNT(*)"] == 0){
       await db.rawQuery("""
       CREATE TABLE "${chatlog.convoID}" (
-          $_chatlogsMessageIDName INTEGER PRIMARY KEY,
-          $_chatlogsSenderIDName INTEGER NOT NULL, 
-          $_chatlogsSentTimeName TEXT NOT NULL,
+          $_chatlogsMessageIDName TEXT PRIMARY KEY,
+          $_chatlogsSenderIDName TEXT NOT NULL, 
           $_chatlogsReceivedTimeName TEXT NOT NULL,
-          $_chatlogsMsgLengthName INTEGER NOT NULL, 
           $_chatlogsMessageName BLOB NOT NULL
       )"""
       );
@@ -104,28 +140,34 @@ class ChatLogDB{
           ?, 
           ?, 
           ?, 
-          ?, 
-          ?, 
           ?
         )
-        """, [chatlog.msgID, chatlog.senderID, chatlog.sentTime, chatlog.rcvTime, chatlog.msgLength, chatlog.message]
+        """, [chatlog.msgID, chatlog.senderID, chatlog.rcvTime, chatlog.message]
       );
     } on DatabaseException{
-      int msgid = chatlog.msgID;
+      String msgid = chatlog.msgID;
       print("Failed to insert entry. MessageID $msgid is already in database!"); //Can change to return something more helpful.
     }
   }
-    /*
 
-  //Returns a list of contact entries from the database. 
+/*
+
+  //Method: getAllChatLogs.
+  //Returns a list of all chat log entries from the database. 
   //Parameters: Optional search pattern in RegEx format.
   //Returns: Nothing.
-  Future<List<Contact>> getContacts([String searchPattern = ""]) async{
+  Future<List<ChatLog>> getAllChatLogs([String searchPattern = ""]) async{
     final db = await database;
     final dynamic data;
     //No search pattern given, so fetch the entire table of contacts.
     if(searchPattern.isEmpty){
-      data = await db.query(_contactsTableName);
+      data = await db.rawQuery("""
+      SELECT $_chatlogsMessageIDName, $_ch
+      FROM 
+      
+
+
+      """);
     }
     //Use the search pattern to fetch only rows with some matching value(s).
     else{
@@ -153,20 +195,27 @@ class ChatLogDB{
       ).toList().cast<Contact>(); //Cast dynamic type data to Contact type.
     return contacts;
   }
-
-  //Remove a contact entry from the database.
-  //Parameters: Contact to be deleted (Contact).
+*/
+  //Method: delChatLog.
+  //Remove a chat log entry from the database using the msgID. Will do nothing if the given message isn't in the database.
+  //Parameters: ChatLog object corresponding to the database entry to be deleted.
   //Returns: None.
-  void delContact(Contact contact) async{
+  void delChatLog(ChatLog chatlog) async{
     final db = await database;
-    final userID = contact.id;
     await db.rawQuery("""
     DELETE FROM 
-    $_contactsTableName 
-    WHERE $_contactsIDName = ?
+    ${chatlog.convoID} 
+    WHERE $_chatlogsMessageIDName = ?
     """,
-    [userID]
+    [chatlog.msgID]
     );
+  }
+
+/*
+
+  void delConvo(ChatLog chatlog) async{
+
+
   }
 
   //Modify a contact entry in the database. Assumes that the userID was not changed.

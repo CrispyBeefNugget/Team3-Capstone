@@ -5,17 +5,17 @@ import 'dart:async';
 
 /*
 Note: Database files for Android apps are stored in the "/data/data/{package}/databases" folder in device storage. Access this in Android Studio 
-by opening the emulated device in device explorer and navigating to "/data/data/{packagename}/databases/contact_db". This folder is 
+by opening the emulated device in device explorer and navigating to "/data/data/{packagename}/databases/Contact_DB.db". This folder is 
 accessible only by someone with root access and the app that made the database.
 */
 
 //Class to store contacts retrieved from and sent to the database.
 class Contact {
-  final String id;
-  String name;
-  String status;
-  String bio;
-  Uint8List pic;
+  final String id; //The unique userID of the user.
+  String name; //The non-unique username of the user.
+  String status; //The user's status, a short message indicating a current mood or other tidbit.
+  String bio; //The user's biography as set in their profile. 
+  Uint8List pic; //A list of 8-bit unsigned integers containing a representation of the user's profile picture.
 
   Contact({
     required this.id,
@@ -122,7 +122,6 @@ class ContactDB{
     }
     //Use the search pattern to fetch only rows with some matching value(s).
     else{
-      print("search: $searchPattern");
       data = await db.rawQuery("""
       SELECT 
       * 
@@ -132,6 +131,8 @@ class ContactDB{
       $_contactsNameName LIKE ? OR
       $_contactsStatusName LIKE ? OR
       $_contactsBioName LIKE ?
+      ORDER BY
+      $_contactsNameName
       """,
       ["%$searchPattern%", "%$searchPattern%", "%$searchPattern%", "%$searchPattern%"]
       );
@@ -152,7 +153,7 @@ class ContactDB{
 
 
   //Method: delContact.
-  //Remove a contact entry from the database. Will do nothing if the given contact isn't in the database.
+  //Remove a contact entry from the database using the userID. Will do nothing if the given contact isn't in the database.
   //Parameters: Contact object corresponding to the database entry to be deleted.
   //Returns: Nothing.
   void delContact(Contact contact) async{

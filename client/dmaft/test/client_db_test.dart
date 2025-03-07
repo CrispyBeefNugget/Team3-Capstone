@@ -5,6 +5,9 @@ import 'package:dmaft/chatlog_db.dart';
 
 void main () async{
   WidgetsFlutterBinding.ensureInitialized();
+  
+  //Contactdb testing
+  /*
   final ContactDB databaseservice = ContactDB.instance; //Access Contacts Database class.
   Contact user1 = Contact(id: "142445", name: "test101name", status: "teststatus", bio: "testbio", pic: Uint8List(8));
   Contact user2 = Contact(id: "242445", name: "test102name", status: "teststatus2", bio: "testbio2", pic: Uint8List(8));
@@ -28,12 +31,15 @@ void main () async{
   for(var i = 0; i < contactlist.length; i++){
     print(contactlist[i].getContactAttr());
   }
-
-  /*
-  print("-----------------------------------------");
-  final ChatLogDB databaseservice2 = ChatLogDB.instance; //Access chatlog Database class.
-  ChatLog log1 = ChatLog(msgID: 192, convoID: 001, senderID: 100, sentTime: DateTime.now(), rcvTime: DateTime.now(), msgLength: 50, message: Uint8List(8));
-  databaseservice2.addChatLog(log1);
   */
+
+  //Chatlogdb testing
+  
+
+  final ChatLogDB databaseservice2 = ChatLogDB.instance; //Access chatlog Database class.
+  ChatLog log1 = ChatLog(msgID: "192", convoID: "001", senderID: "100", rcvTime: DateTime.now().toString(), message: Uint8List(8));
+  databaseservice2.addChatLog(log1);
+  databaseservice2.delChatLog(log1);
+  
 
 }
