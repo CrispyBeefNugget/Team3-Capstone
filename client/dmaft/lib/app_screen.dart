@@ -131,5 +131,8 @@ class _AppScreenState extends State<AppScreen> {
   }
 }
 
+// class ChatsScreenController extends ChangeNotifier {
+//   List<String> _testList = ChatTestList.getList();
 
+// }
 

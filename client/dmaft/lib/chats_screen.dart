@@ -175,6 +175,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
   }
 }
 
+// Future<Widget> refreshChats() async {
+//   await Future.delayed(const Duration(seconds: 5));
+//   return List
+// }
+
 class ListBuilder extends StatefulWidget {
   const ListBuilder({
     super.key,

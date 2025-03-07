@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:dmaft/contact_db.dart';
+
 class ContactsScreen extends StatefulWidget {
   const ContactsScreen({super.key});
 
@@ -137,6 +139,14 @@ class _ContactsScreenState extends State<ContactsScreen> {
               : const SizedBox(),
           actions: <Widget>[
             if (isSelectionMode)
+              IconButton(
+                onPressed: () {
+                  // Insert delete function here
+                  print(_selected);
+
+                },
+                icon: Icon(Icons.delete)
+              ),
               TextButton(
                 child:
                   !_selectAll
