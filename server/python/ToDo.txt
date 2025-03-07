@@ -5,6 +5,7 @@ SERVER:
 - Initialize databases
     - Token database
     - User public key database
+        - UserId
         - Public key hash
         - List of conversation IDs
     - Online user database (maybe???)
@@ -20,9 +21,13 @@ DBs all created in SQLite3!
     - Random challenge generation
     - Challenge signature (response) verification
 
+Registration is DONE! Login should work fine but just haven't tested yet.
+
 
 CLIENT:
 - Public-key cryptography:
     - Generate keypair
     - Sign challenge
     - JSON parsing support
+
+ALL DONE! Just need to be able to import a keypair now.
