@@ -9,11 +9,13 @@ pingMsgFormat = {
     'ClientTimestamp': time.time(),
 }
 
-#CONNECT TO SERVER (SIGN UP OR LOG IN)
-connectMsgFormat = {
+#CONNECT TO SERVER; REQUEST NEW USER REGISTRATION
+requestChallengeMsgFormat = {
     'Command':'CONNECT',
     'UserPublicKeyMod':'', #public key modulus (n); should be BigInt
     'UserPublicKeyExp':'', #public key exponent (e); should be Big int
+    'UserId':'', #leave blank for registration, or fill for login
+    'Register':'', #TRUE for new users, FALSE for existing users. If False, UserId must NOT be blank.
     'ClientTimestamp': time.time(),
 }
 
@@ -22,7 +24,7 @@ authMsgFormat = {
     'Command':'AUTHENTICATE',
     'ChallengeId':'', #temporary UUID identifying the server-sent challenge
     'Signature':'', #signature data that can only be produced by the true user with their private key. Base64-encoded bytes.
-    'HashAlgorithm':'', #Must be one of: SHA256, SHA384, SHA512
+    'HashAlgorithm':'', #Must be one of: SHA256, SHA384, SHA512. Only SHA256 is currently supported.
     'ClientTimestamp': time.time(),
 }
 
@@ -31,7 +33,55 @@ disconnectMsgFormat = {
     'Command':'DISCONNECT',
     'TokenId':'',
     'TokenSecret':'', #ephemeral token provided to 'securely' keep the session alive. Most major platforms use a token of some kind for continued auth.
+    'UserId':'', #server-issued, permanent User ID. Might not be needed since the server-side DB already has the token associated with a user ID.
     'ClientTimestamp': time.time(),
+}
+
+sendMessageMsgFormat = {
+    'Command':'SENDMESSAGE',
+    'TokenId':'',
+    'TokenSecret':'', #ephemeral token provided to 'securely' keep the session alive. Most major platforms use a token of some kind for continued auth.
+    'UserId':'', #server-issued, permanent User ID. Might not be needed since the server-side DB already has the token associated with a user ID.
+    'RecipientId':'', #server-issued ID for the recipient.
+    'ClientTimestamp': time.time(),
+    'MessageType':'',
+    'MessageData':'', #text if a text-based message; base64-encoded bytes otherwise.
+}
+
+#Not supported yet.
+newConvoPolicyMsgFormat = {
+    'Command':'SETPEERPOLICY',
+    'TokenId':'',
+    'TokenSecret':'', #ephemeral token provided to 'securely' keep the session alive. Most major platforms use a token of some kind for continued auth.
+    'UserId':'', #server-issued, permanent User ID. Might not be needed since the server-side DB already has the token associated with a user ID.
+    'ClientTimestamp': time.time(),
+    'PeerPolicy': {
+        'AllowedUsers': [],
+        'AllowedKeys': [],
+        'BlockedUsers': [],
+        'BlockedKeys': [],
+        'BcryptHash':'',
+        'AllowOthers':bool, #if true, others who aren't on the allow or block lists can contact this person. If BcryptHash is non-empty, the correct password must first be specified.
+        'RequireAuthForAllowListed':bool, #if true AND if BcryptHash is non-empty, those on the allowlist must still enter the correct password first.
+    },
+    'Profile': {
+        'Name': {
+            'Value': '',
+            'Visibility':'',
+        },
+        'Photo': {
+            'Value': str, #Base64-encoded data
+            'Visibility':'',
+        },
+        'Status': {
+            'Value': str,
+            'Visibility':'',
+        },
+        'Bio': {
+            'Value': str,
+            'Visibility':'',
+        },
+    }
 }
 
 
@@ -58,6 +108,7 @@ errorTypes = [
     {'ErrorType':'InvalidChallengeId'}, #could either be due to the challenge expiring earlier or it just not existing. Basically the same situation since the table gets pruned BEFORE querying.
     {'ErrorType':'ServerInternalError'},
     {'ErrorType':'InvalidConversationId'},
+    {'ErrorType':'InvalidUserId'},
     {
         'ErrorType':'UserBanned',
         'BanExpiry': time, #Cannot be non-None unless PermanentBan is False
@@ -93,5 +144,19 @@ authReplyFormat = {
     'TokenId': '', #generate a random ID string for this client to use for future near-time transactions
     'TokenSecret': '', #generate a random token password for this client to use for future near-time transactions. Store the password hash but immediately destroy the raw value afterwards.
     'ClientTimestamp': '', #inherited from request
-    'ServerTimestamp': time.time()
+    'ServerTimestamp': time.time(),
+}
+
+#SERVER NOTIFICATIONS
+incomingMessageMsgFormat = {
+    'Command':'INCOMINGMESSAGE',
+    'ServerTimestamp': time.time(), 
+    'OriginalReceiptTimestamp':'', #timestamp of when the server received this message
+    'SenderId':'', #server-issued ID for the sender.
+    'MessageType':'',
+    'MessageData':'',
+}
+
+conversationRequestMsgFormat = {
+    'Command':''
 }
