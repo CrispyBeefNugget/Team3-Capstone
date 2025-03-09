@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dmaft/splash_screen.dart';
-import 'package:dmaft/true_comms.dart';
-import 'package:dmaft/wbs_comms.dart';
+import 'package:dmaft/network.dart';
 
 
 /*

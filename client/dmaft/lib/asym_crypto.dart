@@ -57,6 +57,12 @@ Uint8List rsaSign(RSAPrivateKey privateKey, Uint8List dataToSign) {
   return sig.bytes;
 }
 
+RSASignature rsaSignSHA256(RSAPrivateKey privateKey, Uint8List data) {
+  final signer = RSASigner(SHA256Digest(), '0609608648016503040201');
+  signer.init(true, PrivateKeyParameter<RSAPrivateKey>(privateKey));
+  return signer.generateSignature(data);
+}
+
 
 //Verify an RSA private key signature given the public key, data, and the signature.
 //This method assumes that the signature hash was made using SHA256.
