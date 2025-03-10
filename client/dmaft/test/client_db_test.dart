@@ -1,45 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:dmaft/contact_db.dart';
-import 'package:dmaft/chatlog_db.dart';
+import 'package:dmaft/client_db.dart';
 
 void main () async{
   WidgetsFlutterBinding.ensureInitialized();
   
-  //Contactdb testing
+  final ClientDB databaseservice = ClientDB.instance; //Access ClientDB database.
   /*
-  final ContactDB databaseservice = ContactDB.instance; //Access Contacts Database class.
-  Contact user1 = Contact(id: "142445", name: "test101name", status: "teststatus", bio: "testbio", pic: Uint8List(8));
-  Contact user2 = Contact(id: "242445", name: "test102name", status: "teststatus2", bio: "testbio2", pic: Uint8List(8));
-  Contact user3 = Contact(id: "35", name: "t", status: "teststatus3", bio: "testbio2", pic: Uint8List(8));
-  Contact user4 = Contact(id: "351", name: "t", status: "teststatus4", bio: "testbio2", pic: Uint8List(8));
-  databaseservice.addContact(user1);
-  //databaseservice.addContact(user2);
-  //databaseservice.addContact(user3);
-  List<Contact> contactlist = await databaseservice.getContacts();
-  for(var i = 0; i < contactlist.length; i++){
-    print(contactlist[i].getContactAttr());
-  }
-
-  databaseservice.delContact(user4);
-
-  user2.bio = "New bio2!";
-  databaseservice.modifyContact(user4);
-  print("modified");
+  Contact cont1 = Contact(id: "1", name: "Frank Richardson", status: "teststatus1", bio: "testbio1", pic: Uint8List(8));
+  Contact cont2 = Contact(id: "2", name: "David Alfonzo", status: "teststatus2", bio: "testbio2", pic: Uint8List(8));
+  Contact cont3 = Contact(id: "3", name: "Craig Collins", status: "teststatus3", bio: "testbio3", pic: Uint8List(8));
+  Contact cont4 = Contact(id: "4", name: "Michelle Holly", status: "teststatus4", bio: "testbio4", pic: Uint8List(8));
+  Contact cont5 = Contact(id: "5", name: "Dustin Smith", status: "teststatus5", bio: "testbio5", pic: Uint8List(8));
+  Contact cont6 = Contact(id: "6", name: "Janelle Collins", status: "teststatus6", bio: "testbio6", pic: Uint8List(8));
+  Contact cont7 = Contact(id: "7", name: "Richard Hoffman", status: "teststatus7", bio: "testbio7", pic: Uint8List(8));
+  Contact cont8 = Contact(id: "8", name: "Amanda Dillon", status: "teststatus8", bio: "testbio8", pic: Uint8List(8));
+  Contact cont9 = Contact(id: "9", name: "Carly Sylvester", status: "teststatus9", bio: "testbio9", pic: Uint8List(8));
+  Contact cont10 = Contact(id: "10", name: "William Masters", status: "teststatus10", bio: "testbio10", pic: Uint8List(8));
   
-  contactlist = await databaseservice.getContacts();
-  for(var i = 0; i < contactlist.length; i++){
-    print(contactlist[i].getContactAttr());
-  }
-  */
+  databaseservice.addContact(cont1);
+  databaseservice.addContact(cont2);
+  databaseservice.addContact(cont3);
+  databaseservice.addContact(cont4);
+  databaseservice.addContact(cont5);
+  databaseservice.addContact(cont6);
+  databaseservice.addContact(cont7);
+  databaseservice.addContact(cont8);
+  databaseservice.addContact(cont9);
+  databaseservice.addContact(cont10);
+*/
 
-  //Chatlogdb testing
   
-
-  final ChatLogDB databaseservice2 = ChatLogDB.instance; //Access chatlog Database class.
-  ChatLog log1 = ChatLog(msgID: "192", convoID: "001", senderID: "100", rcvTime: DateTime.now().toString(), message: Uint8List(8));
-  databaseservice2.addChatLog(log1);
-  databaseservice2.delChatLog(log1);
   
 
 }
