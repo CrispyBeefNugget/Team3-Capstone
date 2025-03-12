@@ -75,9 +75,9 @@ class Conversation {
 class MsgLog {
   final String convoID; //The ID for the chat conversation in which the message was sent.
   final String msgID; //The unique ID for the message.
-  final String msgType; //A string keyword indicating the format of the given file or message.
-  final String senderID; //UserID for the message's sender.
-  final String rcvTime; //Time the server received the message. May not align with the time the recipient's client gets the message if they were offline.
+  String msgType; //A string keyword indicating the format of the given file or message.
+  String senderID; //UserID for the message's sender.
+  String rcvTime; //Time the server received the message. May not align with the time the recipient's client gets the message if they were offline.
   Uint8List message; //Message, file, etc. sent to the recipient.
 
   MsgLog({
@@ -320,7 +320,7 @@ class ClientDB{
   //Method: getConvo.
   //Parameters: Conversation ID of the conversation entry.
   //Returns: A conversation object.
-  //Example Usage: "clientdb1.getConvo(<a_conversation_id>);".
+  //Example Usage: "Conversation myconv = clientdb1.getConvo(<a_conversation_id>);".
   //Description: Fetches a conversation object from the database conversations table using the conversation ID. Throws an exception if no conversation with that
   //  id exists.
   Future<Conversation> getConvo(String targetConvoID) async{
@@ -338,10 +338,41 @@ class ClientDB{
       throw NoRowsException("There are no entries in the table for conversation $targetConvoID");
     }
     //Transform database data into a list of Conversation objects
-    Conversation convos = data
+    Conversation convo = data
       .map(
         (e) => Conversation( //Map database data into Conversation class fields.
           convoID: targetConvoID,
+          convoMembers: e[_convoMembersName] as Uint8List, 
+        )
+      ).toList().cast<Conversation>(); //Cast dynamic type data to Conversation type.
+    return convo;
+  }
+
+
+
+  //Method: getAllConvos.
+  //Parameters: None.
+  //Returns: A list of conversation objects.
+  //Example Usage: "List<Conversation> myconvlist = clientdb1.getAllConvos();".
+  //Description: Fetches all conversation objects from the database conversations table. Throws an exception if the table is empty.
+  Future<List<Conversation>> getAllConvos() async{
+    final db = await database;
+    final dynamic data;
+    //Fetch all rows from conversation table.
+    data = await db.rawQuery("""
+    SELECT *
+    FROM $_conversationTableName
+    """);
+  
+    //If there are no rows for the conversation, throw an exception
+    if(data == null){
+      throw NoRowsException("There are conversations in the table.");
+    }
+    //Transform database data into a list of Conversation objects
+    List<Conversation> convos = data
+      .map(
+        (e) => Conversation( //Map database data into Conversation class fields.
+          convoID: e[_convoIDName] as String,
           convoMembers: e[_convoMembersName] as Uint8List, 
         )
       ).toList().cast<Conversation>(); //Cast dynamic type data to Conversation type.
@@ -359,12 +390,9 @@ class ClientDB{
   void modifyConvo(Conversation convo) async{
     final db = await database;
     await db.rawQuery("""
-      UPDATE 
-      $_conversationTableName 
-      SET 
-      $_convoMembersName = ?, 
-      WHERE 
-      $_convoIDName = ?
+      UPDATE $_conversationTableName 
+      SET $_convoMembersName = ?
+      WHERE $_convoIDName = ?
       """,
       [convo.convoMembers, convo.convoID]
     );
@@ -376,15 +404,21 @@ class ClientDB{
   //Parameters: Conversation object corresponding to the database entry to be deleted.
   //Returns: Nothing.
   //Example Usage: "clientdb1.delConvo(<a_Conversation_object>);".
-  //Description: Remove a message log entry from the database using the convoID. Will do nothing if the given conversation isn't in the database.
+  //Description: Remove a message log entry from the database using the convoID. Will do nothing if the given conversation isn't in the database. NOTE: Also
+  //  deletes the message log table for the conversation. Be careful with usage.
   void delConvo(Conversation convo) async{
     final db = await database;
     await db.rawQuery("""
-    DELETE FROM 
-    $_conversationTableName 
+    DELETE FROM $_conversationTableName 
     WHERE $_convoIDName = ?
     """,
     [convo.convoID]
+    );
+
+    //Delete conversation message log table.
+    await db.rawQuery("""
+    DROP TABLE "${convo.convoID}"
+    """
     );
   }
 
@@ -399,7 +433,7 @@ class ClientDB{
   //Returns: Nothing.
   //Example Usage: "clientdb1.addMsgLog(<a_message_log_object>);".
   //Description: Adds a new message log to the database. Creates a table for the conversation if there isn't already one.
-  void addChatLog(MsgLog msglog) async{
+  void addMsgLog(MsgLog msglog) async{
     final db = await database;
     //Check if a table already exists for the conversation ID.
     dynamic tables = await db.rawQuery("""
@@ -420,7 +454,7 @@ class ClientDB{
       )"""
       );
     }
-    //A table exists for the conversation, so just insert the message log.
+    //Insert the message log.
     await db.rawQuery("""
       INSERT INTO "${msglog.convoID}"
       VALUES(
@@ -459,7 +493,7 @@ class ClientDB{
     else{
       data = await db.rawQuery("""
       SELECT *
-      FROM $targetConvoID
+      FROM "$targetConvoID"
       """);
     }
     //If there are no rows for the conversation, throw an exception
@@ -493,7 +527,7 @@ class ClientDB{
     final db = await database;
     await db.rawQuery("""
       UPDATE 
-      ${msglog.convoID} 
+      "${msglog.convoID}" 
       SET 
       $_msglogsMessageTypeName = ?, 
       $_msglogsSenderIDName = ?,
@@ -502,7 +536,7 @@ class ClientDB{
       WHERE 
       $_msglogsMessageIDName = ?
       """,
-      [msglog.msgType, msglog.senderID, msglog.rcvTime, msglog.message]
+      [msglog.msgType, msglog.senderID, msglog.rcvTime, msglog.message, msglog.msgID]
     );
   }
 
@@ -513,16 +547,15 @@ class ClientDB{
   //Returns: None.
   //Example Usage: "clientdb1.delMsgLog(<a_message_log_object>);".
   //Description: Remove a message log entry from the database using the convoID and msgID. Will do nothing if the given message isn't in the database.
-  void delChatLog(MsgLog msglog) async{
+  void delMsgLog(MsgLog msglog) async{
     final db = await database;
     await db.rawQuery("""
     DELETE FROM 
-    ${msglog.convoID} 
+    "${msglog.convoID}" 
     WHERE $_msglogsMessageIDName = ?
     """,
     [msglog.msgID]
     );
   }
-
 }
 

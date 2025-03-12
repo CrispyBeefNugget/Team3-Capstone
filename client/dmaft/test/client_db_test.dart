@@ -1,36 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:dmaft/client_db.dart';
+import 'dart:convert';
 
 void main () async{
   WidgetsFlutterBinding.ensureInitialized();
   
   final ClientDB databaseservice = ClientDB.instance; //Access ClientDB database.
-  /*
-  Contact cont1 = Contact(id: "1", name: "Frank Richardson", status: "teststatus1", bio: "testbio1", pic: Uint8List(8));
-  Contact cont2 = Contact(id: "2", name: "David Alfonzo", status: "teststatus2", bio: "testbio2", pic: Uint8List(8));
-  Contact cont3 = Contact(id: "3", name: "Craig Collins", status: "teststatus3", bio: "testbio3", pic: Uint8List(8));
-  Contact cont4 = Contact(id: "4", name: "Michelle Holly", status: "teststatus4", bio: "testbio4", pic: Uint8List(8));
-  Contact cont5 = Contact(id: "5", name: "Dustin Smith", status: "teststatus5", bio: "testbio5", pic: Uint8List(8));
-  Contact cont6 = Contact(id: "6", name: "Janelle Collins", status: "teststatus6", bio: "testbio6", pic: Uint8List(8));
-  Contact cont7 = Contact(id: "7", name: "Richard Hoffman", status: "teststatus7", bio: "testbio7", pic: Uint8List(8));
-  Contact cont8 = Contact(id: "8", name: "Amanda Dillon", status: "teststatus8", bio: "testbio8", pic: Uint8List(8));
-  Contact cont9 = Contact(id: "9", name: "Carly Sylvester", status: "teststatus9", bio: "testbio9", pic: Uint8List(8));
-  Contact cont10 = Contact(id: "10", name: "William Masters", status: "teststatus10", bio: "testbio10", pic: Uint8List(8));
-  
-  databaseservice.addContact(cont1);
-  databaseservice.addContact(cont2);
-  databaseservice.addContact(cont3);
-  databaseservice.addContact(cont4);
-  databaseservice.addContact(cont5);
-  databaseservice.addContact(cont6);
-  databaseservice.addContact(cont7);
-  databaseservice.addContact(cont8);
-  databaseservice.addContact(cont9);
-  databaseservice.addContact(cont10);
+
+  Conversation conv1 = Conversation(convoID: "7", convoMembers: utf8.encode("a, b"));
+  databaseservice.delConvo(conv1);
+/* 
+
+  MsgLog log2 = MsgLog(convoID: "2", msgID: "2", msgType: "text", senderID: "3", rcvTime: DateTime.now().toString(), message: utf8.encode("My boss approved my vaction time request."));
+  MsgLog log3 = MsgLog(convoID: "1", msgID: "3", msgType: "text", senderID: "5", rcvTime: DateTime.now().toString(), message: utf8.encode("Gotcha. Thanks for the heads-up."));
+  MsgLog log4 = MsgLog(convoID: "3", msgID: "4", msgType: "text", senderID: "1", rcvTime: DateTime.now().toString(), message: utf8.encode("You still free after work?"));
+  MsgLog log5 = MsgLog(convoID: "2", msgID: "5", msgType: "text", senderID: "6", rcvTime: DateTime.now().toString(), message: utf8.encode("I'm still waiting to hear from mine."));
+
+  databaseservice.addMsgLog(log1);
+  databaseservice.addMsgLog(log2);
+  databaseservice.addMsgLog(log3);
+  databaseservice.addMsgLog(log4);
+  databaseservice.addMsgLog(log5);
 */
-
-  
-  
-
 }
