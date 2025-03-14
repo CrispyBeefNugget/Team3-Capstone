@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:dmaft/contact_db.dart';
+import 'package:dmaft/client_db.dart';
 
 class ContactsScreen extends StatefulWidget {
   const ContactsScreen({super.key});
@@ -13,36 +13,34 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   final TextEditingController _searchController = TextEditingController();
 
-  final ContactDB database_service = ContactDB.instance;
+  final ClientDB database_service = ClientDB.instance;
 
+  List<Contact> ?contact_list;
 
+  // List<String> testList = [
+  //   'Dallin Parry',
+  //   'Kacey Tharp',
+  //   'Cameron Beaty',
+  //   'Azaria Hundley',
+  //   'Arthur Ayala',
+  //   'Annette Stallings',
+  //   'Axel Eller',
+  //   'Demarcus Archuleta',
+  //   'Jett Cotter',
+  //   'Margo Truong',
+  //   'Hezekiah Callaway',
+  //   'Marquis Whiting',
+  //   'Rayna Burleson',
+  //   'Giovanna Pritchett',
+  //   'Ajay Seidel',
+  //   'Niya Reeves',
+  //   'Alexus Jeter',
+  //   'Halle Andrew',
+  //   'Keith Levin',
+  //   'Carol Hargrove',
+  // ];
 
-  // await List<Contact> contact_list = ;
-
-  List<String> testList = [
-    'Dallin Parry',
-    'Kacey Tharp',
-    'Cameron Beaty',
-    'Azaria Hundley',
-    'Arthur Ayala',
-    'Annette Stallings',
-    'Axel Eller',
-    'Demarcus Archuleta',
-    'Jett Cotter',
-    'Margo Truong',
-    'Hezekiah Callaway',
-    'Marquis Whiting',
-    'Rayna Burleson',
-    'Giovanna Pritchett',
-    'Ajay Seidel',
-    'Niya Reeves',
-    'Alexus Jeter',
-    'Halle Andrew',
-    'Keith Levin',
-    'Carol Hargrove',
-  ];
-
-  List<String> _filteredList = [];
+  List<Contact> _filteredList = [];
 
   bool isSearchingMode = false;
   bool isSelectionMode = false;
@@ -52,18 +50,32 @@ class _ContactsScreenState extends State<ContactsScreen> {
   @override
   void initState() {
     super.initState();
+    get_contact_info();
     initializeSelection();
+    print('Contact List:');
+    
+    print(contact_list);
 
-    _filteredList = testList;
+    
     _searchController.addListener(_performSearch);
 
     
   }
 
-  void initializeSelection() {
-    testList.sort();
-    testList.add('Test Test');
-    _selected = List<bool>.generate(testList.length, (_) => false);
+  void get_contact_info() async {
+
+    contact_list = await database_service.getContacts();
+    _filteredList = contact_list!;
+
+  }
+
+  void initializeSelection() { // COME BACK HERE
+    // testList.sort();
+    // testList.add('Test Test');
+    if (contact_list == Null) {
+      get_contact_info();
+    }
+    _selected = List<bool>.generate(contact_list!.length, (_) => false);
   }
 
   @override
@@ -79,15 +91,15 @@ class _ContactsScreenState extends State<ContactsScreen> {
       }
       if (_searchController.text != '') {
         isSearchingMode = true;
-        _filteredList = testList
-          .where((element) => element
+        _filteredList = contact_list!
+          .where((element) => element.name
             .toLowerCase()
             .startsWith(_searchController.text.toLowerCase()))
           .toList();
       }
       else {
         isSearchingMode = false;
-        _filteredList = testList;
+        _filteredList = contact_list!;
       }
     });
   }
@@ -161,7 +173,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                 onPressed: () {
                   _selectAll = !_selectAll;
                   setState(() {
-                    _selected = List<bool>.generate(testList.length, (_) => _selectAll);
+                    _selected = List<bool>.generate(contact_list!.length, (_) => _selectAll);
                   });
                 },
               ),
@@ -173,11 +185,11 @@ class _ContactsScreenState extends State<ContactsScreen> {
         body:
           isSearchingMode
           ? ListView.builder(
-            itemCount: _filteredList.length,
+            itemCount: _filteredList!.length,
             itemBuilder: (context, index) => ListTile(
               leading: Icon(Icons.person),
               title: Text(
-                _filteredList[index],
+                _filteredList[index].name,
                 style: const TextStyle(color: Colors.black),
               ),
               onTap: () => {
@@ -199,7 +211,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             ),
           )
           : ListBuilder(
-            contactList: testList,
+            UIcontactList: contact_list!,
             isSelectionMode: isSelectionMode,
             selectedList: _selected,
             onSelectionChange: (bool x) {
@@ -216,13 +228,13 @@ class _ContactsScreenState extends State<ContactsScreen> {
 class ListBuilder extends StatefulWidget {
   const ListBuilder({
     super.key,
-    required this.contactList,
+    required this.UIcontactList,
     required this.selectedList,
     required this.isSelectionMode,
     required this.onSelectionChange,
   });
 
-  final List<String> contactList;
+  final List<Contact> UIcontactList;
   final bool isSelectionMode;
   final List<bool> selectedList;
   final ValueChanged<bool>? onSelectionChange;
@@ -263,7 +275,7 @@ class _ListBuilderState extends State<ListBuilder> {
                 onChanged: (bool? x) => _toggle(index),
               )
               : const SizedBox.shrink(),
-          title: Text(widget.contactList[index]),
+          title: Text(widget.UIcontactList[index].name),
         );
       },
     );

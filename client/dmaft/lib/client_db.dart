@@ -246,6 +246,8 @@ class ClientDB{
           pic: e[_contactsPictureName] as Uint8List,
         )
       ).toList().cast<Contact>(); //Cast dynamic type data to Contact type.
+    print('Method call');
+    print(contacts);
     return contacts;
   }
 
