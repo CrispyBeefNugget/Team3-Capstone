@@ -13,6 +13,12 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   final TextEditingController _searchController = TextEditingController();
 
+  final ContactDB database_service = ContactDB.instance;
+
+
+
+  // await List<Contact> contact_list = ;
+
   List<String> testList = [
     'Dallin Parry',
     'Kacey Tharp',
