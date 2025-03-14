@@ -37,12 +37,21 @@ disconnectMsgFormat = {
     'ClientTimestamp': time.time(),
 }
 
+newConversationMsgFormat = {
+    'Command':'NEWCONVERSATION',
+    'TokenId':'',
+    'TokenSecret':'',
+    'UserId':'',
+    'RecipientIds':'', #comma-separated list would probably be best
+    'ClientTimestamp':'',
+}
+
 sendMessageMsgFormat = {
     'Command':'SENDMESSAGE',
     'TokenId':'',
     'TokenSecret':'', #ephemeral token provided to 'securely' keep the session alive. Most major platforms use a token of some kind for continued auth.
     'UserId':'', #server-issued, permanent User ID. Might not be needed since the server-side DB already has the token associated with a user ID.
-    'RecipientId':'', #server-issued ID for the recipient.
+    'ConversationId':'', #server-issued Conversation ID.
     'ClientTimestamp': time.time(),
     'MessageType':'',
     'MessageData':'', #text if a text-based message; base64-encoded bytes otherwise.
@@ -157,6 +166,9 @@ incomingMessageMsgFormat = {
     'MessageData':'',
 }
 
-conversationRequestMsgFormat = {
-    'Command':''
+newConversationCreatedMsgFormat = {
+    'Command':'NEWCONVERSATIONCREATED',
+    'ServerTimestamp': time.time(),
+    'CreatorId':'', #server-issued ID for the user that created the conversation
+    'Members':'', #server-issued User IDs for all participants in the conversation.
 }

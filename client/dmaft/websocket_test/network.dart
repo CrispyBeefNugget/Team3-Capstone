@@ -186,7 +186,7 @@ These are helper functions that assist the main message handler function.
 Each of these handles a specific kind of message.
 */
 
-  void _handleAuthChallenge(Map responseMsg) {
+  void _handleAuthChallenge(Map responseMsg) async {
     if (! _isValidAuthChallenge(responseMsg)) {
       print("Network.handleAuthChallenge(): Received invalid challenge from server!");
       handleJunk();
@@ -211,7 +211,7 @@ Each of these handles a specific kind of message.
     return;
   }
 
-  void _handleAuthResponse(Map responseMsg) {
+  void _handleAuthResponse(Map responseMsg) async {
     if (! _isValidAuthResponse(responseMsg)) {
       print("Network.handleAuthResponse(): Received invalid response from server!");
       handleJunk();
@@ -230,7 +230,11 @@ Each of these handles a specific kind of message.
     _tokenID = responseMsg['TokenId'];
     const b64d = Base64Decoder();
     _tokenSecret = b64d.convert(responseMsg['TokenSecret']);
-    _serverSock!.sink.close();
+    var sink = _serverSock!.sink;
+    print("We're ready to close the connection now!");
+    sink = _serverSock!.sink;
+    await sink.close(3000); //why doesn't server Python raise an exception when it tries to send to this socket afterwards?
+    print("Sink should be closed now.");
     _serverSock = null;
     _allowJunk = true;
   }
