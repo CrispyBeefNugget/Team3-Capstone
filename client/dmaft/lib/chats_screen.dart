@@ -115,6 +115,18 @@ class _ChatsScreenState extends State<ChatsScreen> {
               : const SizedBox(),
           actions: <Widget>[
             if (isSelectionMode)
+              IconButton(
+                onPressed: () {
+                  for (int i = 0; i < testList.length; i++) {
+                    if (_selected[i] == true) {
+                      testList[i] = '';
+                    }
+                  }
+                  testList.removeWhere((String chat) => chat == '');
+                  isSelectionMode = false; // Need to implement list refreshing and properly close out of selection mode.
+                },
+                icon: Icon(Icons.delete)
+              ),
               TextButton(
                 child:
                   !_selectAll
