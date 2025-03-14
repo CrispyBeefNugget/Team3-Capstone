@@ -15,7 +15,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   final ClientDB database_service = ClientDB.instance;
 
-  List<Contact> ?contact_list = [];
+  List<Contact> ?contact_list = []; // This works.
 
   // List<String> testList = [
   //   'Dallin Parry',
@@ -64,7 +64,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   void get_contact_info() async {
 
-    contact_list = await database_service.getContacts();
+    contact_list = await database_service.getContacts(); // For some reason the contact list is not updating here.
     _filteredList = contact_list!;
 
   }
