@@ -1,7 +1,7 @@
-import 'package:dmaft/wbs_comms.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'comms.dart';
+//import 'comms.dart';
+import 'network.dart';
 import 'dart:io';
 
 /*
@@ -30,7 +30,10 @@ class DMAFT extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    testAuth();
+    final net = Network();
+    net.initRandomUserKeys();
+    net.connectAndAuth('wss://10.0.2.2:8765');
+    //testAuth();
     return const MaterialApp(
       home: SplashScreen(),
       debugShowCheckedModeBanner: false,
