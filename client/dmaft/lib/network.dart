@@ -1,17 +1,24 @@
+import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dmaft/asym_crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pointycastle/export.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import 'dart:convert';
-import 'asym_crypto.dart';
 
 class Network {
-  static bool _allowJunk = false;         //If false, the client will shut down the connection if it receives any junk data from the server. Usually true when the client is already authenticated.
-  static WebSocketChannel? _serverSock;
+  static bool _allowJunk = false;         //If false, the client will shut down the connection if it receives any junk data from the server. False in authentication contexts; True in connected contexts.
+  static WebSocketChannel? _serverSock;   //The WebSocket connection to the server is stored here while active.
+  static final StreamController _clientSock = StreamController(
+    onPause: () => print('Client stream paused.'),
+    onResume: () => print('Client stream resumed.'),
+    onCancel: () => print('Client stream cancelled.'),
+    onListen: () => print('A client is listening!'),
+  );   //The send-to-client event stream is stored here while a server WebSocket connection is active.
   static RSAPublicKey? _publicKey;
   static RSAPrivateKey? _privateKey;
   static String? _userID;
@@ -25,6 +32,19 @@ class Network {
     return instance;
   }
   Network._constructor();
+
+
+  void initRandomUserKeys() {
+    final pair = generateRSAkeyPair(exampleSecureRandom());
+    try {
+      _publicKey = pair.publicKey;
+      _privateKey = pair.privateKey;
+      print("Successfully set a random user keypair.");
+    }
+    catch(e) {
+      print("User keypair has already been set and cannot be changed.");
+    }
+  }
 
 
   //Method: importKeys().
@@ -85,18 +105,37 @@ class Network {
     _serverSock = channel;
   }
 
-  Future<void> connectAndAuth(String serverWbsAddr) async {
+  //Method: connectAndAuth().
+  //Confirms that a valid RSA keypair is set, then starts a network
+  //connection to the specified server and attempts to authenticate.
+  //Parameters: WebSocket server address.
+  //Returns: Nothing if successful, an exception if unsuccessful.
+  void connectAndAuth(String serverWbsAddr) async {
     await _connect(serverWbsAddr);
-    _serverSock!.stream.listen((message) {
-      _handleServerResponse(message);
-    }, onDone: () {
-      print("The stream is closed!");
-      _serverSock = null;
-    }, onError: (error) {
-      print("Stream received error: " + error.toString());
-      _serverSock = null;
-    });
     
+    //Generate and send a challenge BEFORE configuring the listener.
+    //We're configuring the listener to block until it's done for authentication.
+
+    var connectRequest = '';
+    if (_userID == null) {
+      connectRequest = _constructRegisterRequest(_publicKey!);
+    }
+    else {
+      connectRequest = _constructLoginRequest(_publicKey!, _userID!);
+    }
+
+    print('Sending connect request to server...');
+    print(connectRequest);
+    _serverSock!.sink.add(connectRequest);
+
+    //Now define the listener and configure it to block.
+    //The handler method will continue the authentication handshake,
+    //and will close the socket once done to return control of execution.
+    await for (final msg in _serverSock!.stream) {
+      _handleServerResponse(msg);
+    }
+
+    print("Authentication handshake complete!");
   }
 
   //Method: _handleServerResponse().
@@ -133,7 +172,7 @@ class Network {
       case 'CONNECT':
         return _handleAuthChallenge(parsedMsg);
       
-      case 'AUTH':
+      case 'AUTHENTICATE':
         _handleAuthResponse(parsedMsg);
         print("Process complete.");
         print(_tokenID);
@@ -147,7 +186,7 @@ These are helper functions that assist the main message handler function.
 Each of these handles a specific kind of message.
 */
 
-  void _handleAuthChallenge(Map responseMsg) {
+  void _handleAuthChallenge(Map responseMsg) async {
     if (! _isValidAuthChallenge(responseMsg)) {
       print("Network.handleAuthChallenge(): Received invalid challenge from server!");
       handleJunk();
@@ -172,7 +211,7 @@ Each of these handles a specific kind of message.
     return;
   }
 
-  void _handleAuthResponse(Map responseMsg) {
+  void _handleAuthResponse(Map responseMsg) async {
     if (! _isValidAuthResponse(responseMsg)) {
       print("Network.handleAuthResponse(): Received invalid response from server!");
       handleJunk();
@@ -191,7 +230,11 @@ Each of these handles a specific kind of message.
     _tokenID = responseMsg['TokenId'];
     const b64d = Base64Decoder();
     _tokenSecret = b64d.convert(responseMsg['TokenSecret']);
-    _serverSock!.sink.close();
+    var sink = _serverSock!.sink;
+    print("We're ready to close the connection now!");
+    sink = _serverSock!.sink;
+    await sink.close(3000); //why doesn't server Python raise an exception when it tries to send to this socket afterwards?
+    print("Sink should be closed now.");
     _serverSock = null;
     _allowJunk = true;
   }
@@ -236,7 +279,7 @@ Can vary from data integrity checks to sub-functions.
       }
     }
     //Ensure all required keys have the right values and types
-    if (responseData['Command'].toString().toUpperCase() != 'CONNECT') return false;
+    if (responseData['Command'].toString().toUpperCase() != 'AUTHENTICATE') return false;
     if (responseData['UserId'] is! String) return false;
     if (responseData['TokenId'] is! String) return false;
     if (responseData['TokenSecret'] is! String) return false;
@@ -269,6 +312,9 @@ Can vary from data integrity checks to sub-functions.
     return true;
   }
 
+  //JSON server message constructors.
+  //Each of these takes its requested info, and constructs
+  //a valid JSON message to send directly to the server.
 
   String _constructLoginRequest(RSAPublicKey userPublicKey, String userID) {
     final currentTime = DateTime.timestamp();
@@ -292,6 +338,7 @@ Can vary from data integrity checks to sub-functions.
       'UserPublicKeyExp': userPublicKey.publicExponent.toString(),
       'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt(), //Server only accepts second-level accuracy and Dart doesn't provide that natively
       'Register': 'True',
+      'UserId':'',
     };
     const encoder = JsonEncoder();
     return encoder.convert(loginRequest);
@@ -312,6 +359,8 @@ Can vary from data integrity checks to sub-functions.
   }
 
 }
+
+
 //Throw this exception when a Network object is asked to change critical info while connected to a server.
 class ValueFrozenByNetworkConnection implements Exception {
   const ValueFrozenByNetworkConnection(): super();

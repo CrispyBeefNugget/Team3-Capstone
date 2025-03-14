@@ -23,6 +23,17 @@ ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
 
 ssl_context.load_cert_chain(ssl_cert, keyfile=ssl_key)
 
+connectedClients = [] #Holds a list of dictionaries with these keys: UserId -> (the client's UserId), Socket -> (the raw ServerSocket pointer)
+
+def getClientFromSocket(socket: websockets.asyncio.server.ServerConnection):
+    return list(filter(lambda client: client['SocketId'] == socket, connectedClients))
+    #Credit to here for this method: https://stackoverflow.com/a/25373204
+
+def deleteSocket(socket: websockets.asyncio.server.ServerConnection):
+    for client in connectedClients:
+        if client['SocketId'] == socket.id:
+            connectedClients.remove(client)
+
 def getRSAPublicKeySHA512(pubkey: rsa.RSAPublicKey):
     pubBytes = pubkey.public_bytes(encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo)
     sha512Thumbprint = hashlib.sha512(pubBytes).hexdigest()
@@ -210,28 +221,58 @@ def handleRequest(clientRequest):
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Invalid command received from client.')
 
 
-async def listen(websocket):
-    print("Running the listen function now!")
-    async for message in websocket:
-        print("Received message!")
-        try:
-            clientRequest = json.loads(message)
-        except:
-            serverReply = makeError(clientRequest={}, errorCode='NonJSONRequest', reason='This server only accepts JSON requests.')
-            await websocket.send(json.dumps(serverReply))
-            continue
-        
-        try:
-            serverReply = handleRequest(clientRequest)
-            print("Sending to client:", serverReply)
-            await websocket.send(json.dumps(serverReply))
-            print("Successfully processed request.\n")
-        except Exception as e:
-            print("ERROR: handleRequest threw an exception.")
-            print("Exception Info:")
-            print(e, '\n')
-            serverReply = makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Server failed to process the request.')
-            await websocket.send(json.dumps(serverReply))
+async def listen(websocket: websockets.asyncio.server.ServerConnection):
+    global connectedClients
+    try:
+        print(type(websocket))
+        i = 0
+        print("Running the listen function now!")
+        async for message in websocket:
+            if (getClientFromSocket(websocket.id) == []):
+                connectedClients.append({'UserId':None,'SocketId':websocket.id})
+
+            i += 1
+            print('Count:', i)
+            print("Received message!")
+            try:
+                clientRequest = json.loads(message)
+            except:
+                serverReply = makeError(clientRequest={}, errorCode='NonJSONRequest', reason='This server only accepts JSON requests.')
+                await websocket.send(json.dumps(serverReply))
+                continue
+            
+            try:
+                serverReply = handleRequest(clientRequest)
+                print("Sending to client:", serverReply)
+                await websocket.send(json.dumps(serverReply))
+                print("Successfully processed request.\n")
+                print(websocket.close_code)
+
+                #REMOVE CODE BELOW AFTER TESTING
+                if i >= 2:
+                    print('Waiting 30 seconds to send the bad packet...')
+                    time.sleep(10)
+                    print("Sending!")
+                    print(websocket.close_code)
+                    await websocket.send(json.dumps(makeError(clientRequest=None, errorCode='None', reason='This is a test message on a broken socket to see what happens.')))
+                    print("Tried to send the message!")
+
+            except Exception as e:
+                print("ERROR: handleRequest threw an exception.")
+                print("Exception Info:")
+                print(e, '\n')
+                serverReply = makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Server failed to process the request.')
+                await websocket.send(json.dumps(serverReply))
+
+    except websockets.exceptions.ConnectionClosed as closed:
+        print("Client disconnected:", closed)
+        deleteSocket(websocket)
+        print("Removed this websocket from the list of active clients.")
+
+    except Exception as e:
+        print('Exception raised when trying to send message:', websocket, e)
+        deleteSocket(websocket)
+        print("Removed this websocket from the list of active clients.")
 
 
 async def main():
@@ -254,6 +295,9 @@ def makeError(*, clientRequest: dict, retry: bool = False, errorCode, reason: st
     except:
         pass
     return json.dumps(jsonMsg)
+
+def makeBadAuthError(*, clientRequest: dict):
+    return makeError(clientRequest=clientRequest, errorCode='InvalidToken', reason='The required token for this operation is missing or invalid. Please request a new challenge.')
 
 if __name__ == "__main__":
     asyncio.run(main())
