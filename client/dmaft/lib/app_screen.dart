@@ -47,18 +47,18 @@ class _AppScreenState extends State<AppScreen> {
   @override
   void initState() {
     super.initState();
-    _incrementCounter();
+    //_incrementCounter();
   }
 
-  void _incrementCounter() async {
-    while (true) {
-      await Future.delayed(Duration(seconds: 5));
-      ChatTestList.addToList('Test Test');
-      setState(() {
-        unread = ChatTestList.getSize();
-      });
-    }
-  }
+  // void _incrementCounter() async {
+  //   while (true) {
+  //     await Future.delayed(Duration(seconds: 5));
+  //     ChatTestList.addToList('Test Test');
+  //     setState(() {
+  //       unread = ChatTestList.getSize();
+  //     });
+  //   }
+  // }
 
   @override
   void dispose() {

@@ -15,7 +15,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   final ClientDB database_service = ClientDB.instance;
 
-  List<Contact> ?contact_list;
+  List<Contact> ?contact_list = [];
 
   // List<String> testList = [
   //   'Dallin Parry',
