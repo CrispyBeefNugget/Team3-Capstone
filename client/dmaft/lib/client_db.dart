@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:async';
+import 'dart:convert';
 
 
 
@@ -61,7 +62,7 @@ class Contact {
 //Class to store conversations retrieved from and sent to the database.
 class Conversation {
   final String convoID; //The unique convoID of the conversation.
-  Uint8List convoMembers; //A list of userIDs for users participating in the conversation.
+  List<String> convoMembers; //A list of userIDs for users participating in the conversation.
 
   Conversation({
     required this.convoID,
@@ -166,7 +167,7 @@ class ClientDB{
         db.rawQuery("""
           CREATE TABLE "$_conversationTableName" (
             $_convoIDName TEXT PRIMARY KEY, 
-            $_convoMembersName BLOB NOT NULL
+            $_convoMembersName TEXT NOT NULL
         )
         """);
       }
@@ -310,7 +311,7 @@ class ClientDB{
       _conversationTableName, 
       {
         _convoIDName: convo.convoID,
-        _convoMembersName: convo.convoMembers,
+        _convoMembersName: convo.convoMembers.join(","),
       }
     );
   }
@@ -340,9 +341,9 @@ class ClientDB{
     //Transform database data into a list of Conversation objects
     Conversation convo = data
       .map(
-        (e) => Conversation( //Map database data into Conversation class fields.
+        (e) => Conversation( //Map database data into Conversation class fields. Splits convo members around commas to reform a list.
           convoID: targetConvoID,
-          convoMembers: e[_convoMembersName] as Uint8List, 
+          convoMembers: e[_convoMembersName].split(",") as List<String>, 
         )
       ).toList().cast<Conversation>(); //Cast dynamic type data to Conversation type.
     return convo;
@@ -351,7 +352,7 @@ class ClientDB{
 
 
   //Method: getAllConvos.
-  //Parameters: None.
+  //Parameters: Nothing.
   //Returns: A list of conversation objects.
   //Example Usage: "List<Conversation> myconvlist = clientdb1.getAllConvos();".
   //Description: Fetches all conversation objects from the database conversations table. Throws an exception if the table is empty.
@@ -371,9 +372,9 @@ class ClientDB{
     //Transform database data into a list of Conversation objects
     List<Conversation> convos = data
       .map(
-        (e) => Conversation( //Map database data into Conversation class fields.
+        (e) => Conversation( //Map database data into Conversation class fields. Splits convo members around commas to reform a list.
           convoID: e[_convoIDName] as String,
-          convoMembers: e[_convoMembersName] as Uint8List, 
+          convoMembers: e[_convoMembersName].split(",") as List<String>, 
         )
       ).toList().cast<Conversation>(); //Cast dynamic type data to Conversation type.
     return convos;
@@ -381,7 +382,7 @@ class ClientDB{
 
 
 
-  //Method: updateConvo.
+  //Method: modifyConvo.
   //Parameters: Updated Conversation object.
   //Returns: Nothing.
   //Example Usage: "clientdb1.modifyConvo(<a_Conversation_object>);".
@@ -394,7 +395,7 @@ class ClientDB{
       SET $_convoMembersName = ?
       WHERE $_convoIDName = ?
       """,
-      [convo.convoMembers, convo.convoID]
+      [convo.convoMembers.join(","), convo.convoID] //Convomembers list elements are joined into a string and separated by commas for storage.
     );
   }
 
@@ -544,18 +545,43 @@ class ClientDB{
 
   //Method: delMsgLog.
   //Parameters: MsgLog object corresponding to the database entry to be deleted.
-  //Returns: None.
+  //Returns: Nothing.
   //Example Usage: "clientdb1.delMsgLog(<a_message_log_object>);".
   //Description: Remove a message log entry from the database using the convoID and msgID. Will do nothing if the given message isn't in the database.
   void delMsgLog(MsgLog msglog) async{
     final db = await database;
-    await db.rawQuery("""
-    DELETE FROM 
-    "${msglog.convoID}" 
+    await db.rawQuery(
+    """
+    DELETE FROM "${msglog.convoID}" 
     WHERE $_msglogsMessageIDName = ?
     """,
     [msglog.msgID]
     );
   }
-}
 
+
+
+  //Method: delOlderMsgLogs.
+  //Parameters: DateTime object to serve as cutoff point for messages.
+  //Returns: Nothing.
+  //Example Usage: "clientdb1.delOlderMsgLogs(DateTime(11,3,2025));" would delete any message logs older than March 11, 2025 00:00:00, so everything from march
+  //  11 back would be deleted.
+  //Description: Remove all message logs in the database older than the given date (inclusive). Date should be provided as a dart DateTime object using the
+  //  local time zone.
+  void delOlderMsgLogs(DateTime date) async{
+    final db = await database;
+    //Fetch all conversations and use their convoIDs in message retrieval.
+    List<Conversation> convos = await getAllConvos(); 
+    //For each conversation's table, delete any messages with dates older than the specified one.
+    for(int i = 0; i < convos.length; i++){
+      print(convos[i].convoMembers);
+      await db.rawQuery(
+      """
+      DELETE FROM "${convos[i].convoID}" 
+      WHERE $_msglogsReceivedTimeName >= ?
+      """,
+      [date.toString()]
+      );
+    }
+  }
+}

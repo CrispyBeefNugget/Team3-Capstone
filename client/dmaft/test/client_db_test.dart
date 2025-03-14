@@ -8,20 +8,24 @@ void main () async{
   WidgetsFlutterBinding.ensureInitialized();
   
   final ClientDB databaseservice = ClientDB.instance; //Access ClientDB database.
+  
+  
+  //Conversation conv1 = Conversation(convoID: "1", convoMembers: ["5", "10"]);
+  //Conversation conv2 = Conversation(convoID: "2", convoMembers: ["6", "3"]);
+  //Conversation conv3 = Conversation(convoID: "3", convoMembers: ["1", "10"]);
 
-  Conversation conv1 = Conversation(convoID: "7", convoMembers: utf8.encode("a, b"));
-  databaseservice.delConvo(conv1);
-/* 
+  //Conversation conv3 = Conversation(convoID: "3", convoMembers: ["2", "10"]);
+  //databaseservice.modifyConvo(conv3);
 
-  MsgLog log2 = MsgLog(convoID: "2", msgID: "2", msgType: "text", senderID: "3", rcvTime: DateTime.now().toString(), message: utf8.encode("My boss approved my vaction time request."));
-  MsgLog log3 = MsgLog(convoID: "1", msgID: "3", msgType: "text", senderID: "5", rcvTime: DateTime.now().toString(), message: utf8.encode("Gotcha. Thanks for the heads-up."));
-  MsgLog log4 = MsgLog(convoID: "3", msgID: "4", msgType: "text", senderID: "1", rcvTime: DateTime.now().toString(), message: utf8.encode("You still free after work?"));
-  MsgLog log5 = MsgLog(convoID: "2", msgID: "5", msgType: "text", senderID: "6", rcvTime: DateTime.now().toString(), message: utf8.encode("I'm still waiting to hear from mine."));
-
-  databaseservice.addMsgLog(log1);
-  databaseservice.addMsgLog(log2);
-  databaseservice.addMsgLog(log3);
-  databaseservice.addMsgLog(log4);
-  databaseservice.addMsgLog(log5);
+  //DateTime date = DateTime(2025,03,11);
+  //databaseservice.delOlderMsgLogs(date);
+/*
+  var convos = await databaseservice.getAllConvos();
+  for(int i = 0; i < 3; i++){
+    print(convos[i].convoID);
+    print(convos[i].convoMembers);
+  }
 */
+ // databaseservice.modifyConvo(conv2);
+  //databaseservice.modifyConvo(conv3);
 }
