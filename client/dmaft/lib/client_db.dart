@@ -39,11 +39,11 @@ class NoTableException implements Exception{
 
 
 
-//Class to store contacts retrieved from and sent to the database.
+//Class to store contacts or personal user data retrieved from and sent to the database.
 class Contact {
   final String id; //The unique userID of the user.
   String name; //The non-unique username of the user.
-  String status; //The user's status, a short message indicating a current mood or other tidbit.
+  String pronouns; //The user's preferred pronouns.
   String bio; //The user's biography as set in their profile. 
   Uint8List pic; //A list of 8-bit unsigned integers containing a representation of the user's profile picture.
   String lastModified; //A string in DateTime format indicating when the contact when last updated.
@@ -51,7 +51,7 @@ class Contact {
   Contact({
     required this.id,
     required this.name,
-    required this.status,
+    required this.pronouns,
     required this.bio,
     required this.pic,
     required this.lastModified,
@@ -112,15 +112,17 @@ class ClientDB{
   static Database? _db; //Database object
   Future<Database> get database async{
     if(_db != null) return _db!;
-    _db = await getDatabase();
+    _db = await _getDatabase();
     return _db!;
   }
 
   //Store database column names for easier adjustment later.
+  final String _userTableName = "userTable";
+  
   final String _contactsTableName = "contactTable";
   final String _contactsIDName = "userID";
   final String _contactsNameName = "userName";
-  final String _contactsStatusName = "userStatus";
+  final String _contactsPronounsName = "userPronouns";
   final String _contactsBioName = "userBio";
   final String _contactsPictureName = "userProfilePic";
   final String _contactsLastModifiedName = "lastModified";
@@ -138,6 +140,8 @@ class ClientDB{
 
 
 
+
+
   //Universal methods-------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -147,7 +151,7 @@ class ClientDB{
   //Returns: A future Sqflite Database object.
   //Example Usage: Called automatically during ClientDB instance construction so just use "final ClienttDB <name> = ClientDB.instance;".
   //Description: Opens the local client database and returns a future database object.
-  Future<Database> getDatabase() async{
+  Future<Database> _getDatabase() async{
     //Get database path. Uses default system path for database storage.
     final dbDirPath = await getDatabasesPath();
     final dbPath = join(dbDirPath, 'client_db');
@@ -157,12 +161,37 @@ class ClientDB{
       version: 1,
       //When a new database is created, create tables for contacts and conversations.
       onCreate: (db, version) { 
+        //Create a table for user data storage.
+        db.rawQuery("""
+          CREATE TABLE "$_userTableName" (
+            $_contactsIDName TEXT PRIMARY KEY, 
+            $_contactsNameName TEXT NOT NULL, 
+            $_contactsPronounsName TEXT NOT NULL,
+            $_contactsBioName TEXT NOT NULL,
+            $_contactsPictureName BLOB NOT NULL,
+            $_contactsLastModifiedName TEXT NOT NULL
+          )
+        """);
+
+        //Loads a single blank user into the User table.
+        db.insert(
+          _userTableName, 
+          {
+            _contactsIDName: "",
+            _contactsNameName: "",
+            _contactsPronounsName: "",
+            _contactsBioName: "",
+            _contactsPictureName: Uint8List(8),
+            _contactsLastModifiedName: "",
+          }
+        );
+        
         //Create a table for contact storage.
         db.rawQuery("""
           CREATE TABLE "$_contactsTableName" (
             $_contactsIDName TEXT PRIMARY KEY, 
             $_contactsNameName TEXT NOT NULL, 
-            $_contactsStatusName TEXT NOT NULL,
+            $_contactsPronounsName TEXT NOT NULL,
             $_contactsBioName TEXT NOT NULL,
             $_contactsPictureName BLOB NOT NULL,
             $_contactsLastModifiedName TEXT NOT NULL
@@ -174,12 +203,66 @@ class ClientDB{
           CREATE TABLE "$_conversationTableName" (
             $_convoIDName TEXT PRIMARY KEY, 
             $_convoMembersName TEXT NOT NULL,
-            $_convoLastModifiedName TEXT NOT NULL,
+            $_convoLastModifiedName TEXT NOT NULL
         )
         """);
       }
     );
     return database;
+  }
+
+
+
+  //User methods---------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+  //Method: getUser.
+  //Parameters: None.
+  //Returns: A future Contact object.
+  //Example usage: "Contact user1 = await clientdb1.getUser();".
+  //Description: Fetches the Contact object for the user's own information. Stores the same types of data as other Contact objects.
+  Future<Contact> getUser() async{
+    final db = await database;
+    final dynamic data;
+    //Fetch user table row.
+    data = await db.query(_userTableName);
+    //Transform database data into a Contact object
+    Contact user = data
+      .map(
+        (e) => Contact( //Map database data into Contact class fields.
+          id: e[_contactsIDName] as String, 
+          name: e[_contactsNameName] as String,
+          pronouns: e[_contactsPronounsName] as String,
+          bio: e[_contactsBioName] as String,  
+          pic: e[_contactsPictureName] as Uint8List,
+          lastModified: e[_contactsLastModifiedName] as String,
+        )
+      ).toList().cast<Contact>(); //Cast dynamic type data to Contact type.
+    return user;
+  }
+
+
+
+  //Method: modifyUser.
+  //Parameters: Updated contact object.
+  //Returns: Nothing.
+  //Example Usage: "clientdb1.modifyUser(<a_Contact_object>);".
+  //Description: Modify the user's Contact entry in the database. Changes all fields including userID to match the Contact object's properties.
+  Future<void> modifyUser(Contact user) async{
+    final db = await database;
+    await db.rawQuery("""
+      UPDATE 
+      $_userTableName
+      SET 
+      $_contactsIDName = ?,
+      $_contactsNameName = ?,
+      $_contactsPronounsName = ?, 
+      $_contactsBioName = ?,
+      $_contactsLastModifiedName = ?
+      """,
+      [user.id, user.name, user.pronouns, user.bio, user.lastModified]
+    );
   }
 
 
@@ -194,7 +277,7 @@ class ClientDB{
   //Example Usage: "clientdb1.addContact(<a_Contact_object>);".
   //Description: Creates a database entry using properties of a Contact object. Will throw an exception if the primary key value (userID) already exists in the 
   //  database.
-  void addContact(Contact contact) async{
+  Future<void> addContact(Contact contact) async{
     final db = await database;
     //Insert data.
     await db.insert(
@@ -202,7 +285,7 @@ class ClientDB{
       {
         _contactsIDName: contact.id,
         _contactsNameName: contact.name,
-        _contactsStatusName: contact.status,
+        _contactsPronounsName: contact.pronouns,
         _contactsBioName: contact.bio,
         _contactsPictureName: contact.pic,
         _contactsLastModifiedName: contact.lastModified,
@@ -235,7 +318,7 @@ class ClientDB{
       WHERE
       $_contactsIDName LIKE ? OR
       $_contactsNameName LIKE ? OR
-      $_contactsStatusName LIKE ? OR
+      $_contactsPronounsName LIKE ? OR
       $_contactsBioName LIKE ?
       ORDER BY
       $_contactsNameName
@@ -249,7 +332,7 @@ class ClientDB{
         (e) => Contact( //Map database data into Contact class fields.
           id: e[_contactsIDName] as String, 
           name: e[_contactsNameName] as String,
-          status: e[_contactsStatusName] as String,
+          pronouns: e[_contactsPronounsName] as String,
           bio: e[_contactsBioName] as String,  
           pic: e[_contactsPictureName] as Uint8List,
           lastModified: e[_contactsLastModifiedName] as String,
@@ -266,21 +349,21 @@ class ClientDB{
   //Example Usage: "clientdb1.modifyContact(<a_Contact_object>);".
   //Description: Modify a contact entry in the database using the userID. Changes all fields except userID to match the Contact object's properties. Does 
   //  nothing if no entry exists with the given userID.
-  void modifyContact(Contact contact) async{
+  Future<void> modifyContact(Contact contact) async{
     final db = await database;
     await db.rawQuery("""
       UPDATE 
       $_contactsTableName 
       SET 
       $_contactsNameName = ?,
-      $_contactsStatusName = ?, 
+      $_contactsPronounsName = ?, 
       $_contactsBioName = ?,
       $_contactsLastModifiedName = ?
       
       WHERE 
       $_contactsIDName = ?
       """,
-      [contact.name, contact.status, contact.bio, contact.id, contact.lastModified]
+      [contact.name, contact.pronouns, contact.bio, contact.lastModified, contact.id]
     );
   }
 
@@ -291,7 +374,7 @@ class ClientDB{
   //Returns: Nothing.
   //Example Usage: "clientdb1.delContact(<a_Contact_object>);".
   //Description: Remove a contact entry from the database using the given Contact object's userID. Will do nothing if the given contact isn't in the database.
-  void delContact(Contact contact) async{
+  Future<void> delContact(Contact contact) async{
     final db = await database;
     await db.rawQuery("""
     DELETE FROM 
@@ -312,9 +395,9 @@ class ClientDB{
   //Parameters: Conversation object to be used to make a database entry.
   //Returns: Nothing.
   //Example Usage: "clientdb1.addConvo(<a_conversation_object>);".
-  //Description: Note that this does NOT create a message log conversation table! This creates an entry in the conversations table used to track which users are
-  //  in each conversation.
-  void addConvo(Conversation convo) async{
+  //Description: Creates an entry in the conversations table used to track which users are in each conversation. Also creates a MsgLog table for the 
+  //  conversation.
+  Future<void> addConvo(Conversation convo) async{
     final db = await database;
     //Insert data.
     await db.insert(
@@ -325,6 +408,16 @@ class ClientDB{
         _convoLastModifiedName: convo.lastModified,
       }
     );
+    //Create a MsgLog table for the conversation.
+    db.rawQuery("""
+      CREATE TABLE "${convo.convoID}" (
+        $_msglogsMessageIDName TEXT PRIMARY KEY,
+        $_msglogsMessageTypeName TEXT NOT NULL,
+        $_msglogsSenderIDName TEXT NOT NULL, 
+        $_msglogsReceivedTimeName TEXT NOT NULL,
+        $_msglogsMessageName BLOB NOT NULL
+      )
+    """);
   }
 
 
@@ -401,7 +494,7 @@ class ClientDB{
   //Example Usage: "clientdb1.modifyConvo(<a_Conversation_object>);".
   //Description: Updates an existing conversation database entry with the properties of the given Conversation object. Does nothing if there is no database 
   //  entry with the same convoID.
-  void modifyConvo(Conversation convo) async{
+  Future<void> modifyConvo(Conversation convo) async{
     final db = await database;
     await db.rawQuery("""
       UPDATE $_conversationTableName 
@@ -422,7 +515,7 @@ class ClientDB{
   //Example Usage: "clientdb1.delConvo(<a_Conversation_object>);".
   //Description: Remove a message log entry from the database using the convoID. Will do nothing if the given conversation isn't in the database. NOTE: Also
   //  deletes the message log table for the conversation. Be careful with usage.
-  void delConvo(Conversation convo) async{
+  Future<void> delConvo(Conversation convo) async{
     final db = await database;
     await db.rawQuery("""
     DELETE FROM $_conversationTableName 
@@ -448,29 +541,11 @@ class ClientDB{
   //Parameters: MsgLog object to be added. Note that no fields can be null.
   //Returns: Nothing.
   //Example Usage: "clientdb1.addMsgLog(<a_message_log_object>);".
-  //Description: Adds a new message log to the database. Creates a table for the conversation if there isn't already one.
-  void addMsgLog(MsgLog msglog) async{
+  //Description: Adds a new message log to the database. There must already be a conversation table for it (created alongside the table entry made with 
+  //  the addConvo method).
+  Future<void> addMsgLog(MsgLog msglog) async{
     final db = await database;
-    //Check if a table already exists for the conversation ID.
-    dynamic tables = await db.rawQuery("""
-      SELECT COUNT(*) 
-      FROM sqlite_master 
-      WHERE type = 'table' 
-      AND name = ?
-    """, [msglog.convoID]);
-    //No table exists for this conversation, so create one.
-    if(tables[0]["COUNT(*)"] == 0){
-      await db.rawQuery("""
-      CREATE TABLE "${msglog.convoID}" (
-          $_msglogsMessageIDName TEXT PRIMARY KEY,
-          $_msglogsMessageTypeName TEXT NOT NULL,
-          $_msglogsSenderIDName TEXT NOT NULL, 
-          $_msglogsReceivedTimeName TEXT NOT NULL,
-          $_msglogsMessageName BLOB NOT NULL
-      )"""
-      );
-    }
-    //Insert the message log.
+    //Insert msglog into conversation table.
     await db.rawQuery("""
       INSERT INTO "${msglog.convoID}"
       VALUES(
@@ -539,7 +614,7 @@ class ClientDB{
   //Example Usage: 
   //Description: Updates an existing message log database entry with the properties of the given MsgLog object. Does nothing if there is no database entry 
   //  with the same msgID.
-  void modifyMsgLog(MsgLog msglog) async{
+  Future<void> modifyMsgLog(MsgLog msglog) async{
     final db = await database;
     await db.rawQuery("""
       UPDATE 
@@ -563,7 +638,7 @@ class ClientDB{
   //Returns: Nothing.
   //Example Usage: "clientdb1.delMsgLog(<a_message_log_object>);".
   //Description: Remove a message log entry from the database using the convoID and msgID. Will do nothing if the given message isn't in the database.
-  void delMsgLog(MsgLog msglog) async{
+  Future<void> delMsgLog(MsgLog msglog) async{
     final db = await database;
     await db.rawQuery(
     """
@@ -583,7 +658,7 @@ class ClientDB{
   //  11 back would be deleted.
   //Description: Remove all message logs in the database older than the given date (inclusive). Date should be provided as a dart DateTime object using the
   //  local time zone.
-  void delOlderMsgLogs(DateTime date) async{
+  Future<void> delOlderMsgLogs(DateTime date) async{
     final db = await database;
     //Fetch all conversations and use their convoIDs in message retrieval.
     List<Conversation> convos = await getAllConvos(); 
