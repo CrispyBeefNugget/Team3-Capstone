@@ -91,6 +91,7 @@ class _AppScreenState extends State<AppScreen> {
       
       body: <Widget>[
         ContactsScreen(),
+        // ContactsTest(),
         ChatsScreen(),
         SettingsScreen(),
       ][myIndex],

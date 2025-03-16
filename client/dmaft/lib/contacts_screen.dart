@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import 'package:dmaft/client_db.dart';
@@ -15,30 +17,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   final ClientDB database_service = ClientDB.instance;
 
-  List<Contact> ?contact_list = []; // This works.
-
-  // List<String> testList = [
-  //   'Dallin Parry',
-  //   'Kacey Tharp',
-  //   'Cameron Beaty',
-  //   'Azaria Hundley',
-  //   'Arthur Ayala',
-  //   'Annette Stallings',
-  //   'Axel Eller',
-  //   'Demarcus Archuleta',
-  //   'Jett Cotter',
-  //   'Margo Truong',
-  //   'Hezekiah Callaway',
-  //   'Marquis Whiting',
-  //   'Rayna Burleson',
-  //   'Giovanna Pritchett',
-  //   'Ajay Seidel',
-  //   'Niya Reeves',
-  //   'Alexus Jeter',
-  //   'Halle Andrew',
-  //   'Keith Levin',
-  //   'Carol Hargrove',
-  // ];
+  List<Contact> contact_list = [Contact(id: 'test', name: 'test', status: 'test', bio: 'test', pic: Uint8List(10))]; // This works.
 
   List<Contact> _filteredList = [];
 
@@ -49,33 +28,36 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   @override
   void initState() {
-    super.initState();
-    get_contact_info();
-    initializeSelection();
-    print('Contact List:');
-    
+    // super.initState();
+
+    get_contact_info().then((response) {
+      setState(() {
+        contact_list = response;
+      });
+      initializeSelection();
+      _filteredList = contact_list;
+
+      print('Contact List in setState():');
+      print(contact_list);
+
+    });
+
+    print('Contact List outside setState():');
     print(contact_list);
 
     
     _searchController.addListener(_performSearch);
 
-    
+    super.initState();
   }
 
-  void get_contact_info() async {
-
-    contact_list = await database_service.getContacts(); // For some reason the contact list is not updating here.
-    _filteredList = contact_list!;
-
+  Future<List<Contact>> get_contact_info() async {
+    var db_contacts = await database_service.getContacts(); // For some reason the contact list is not updating here.
+    return db_contacts;
   }
 
   void initializeSelection() { // COME BACK HERE
-    // testList.sort();
-    // testList.add('Test Test');
-    if (contact_list == Null) {
-      get_contact_info();
-    }
-    _selected = List<bool>.generate(contact_list!.length, (_) => false);
+    _selected = List<bool>.generate(contact_list.length, (_) => false);
   }
 
   @override
@@ -91,7 +73,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
       }
       if (_searchController.text != '') {
         isSearchingMode = true;
-        _filteredList = contact_list!
+        _filteredList = contact_list
           .where((element) => element.name
             .toLowerCase()
             .startsWith(_searchController.text.toLowerCase()))
@@ -99,7 +81,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
       }
       else {
         isSearchingMode = false;
-        _filteredList = contact_list!;
+        _filteredList = contact_list;
       }
     });
   }
@@ -141,86 +123,97 @@ class _ContactsScreenState extends State<ContactsScreen> {
         ],
       ),
 
-      body: Scaffold(
-        appBar: AppBar(
-          leading: 
-            isSelectionMode
-              ? IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () {
-                    setState(() {
-                      isSelectionMode = false;
-                    });
-                    initializeSelection();
-                  },
-              )
-              : const SizedBox(),
-          actions: <Widget>[
-            if (isSelectionMode)
-              IconButton(
-                onPressed: () {
-                  // Insert delete function here
-                  print(_selected);
+      body: FutureBuilder(
+        future: get_contact_info(),
+        builder: (BuildContext context, AsyncSnapshot snapshot) {
+          if (snapshot.hasData) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: 
+                  isSelectionMode
+                    ? IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() {
+                            isSelectionMode = false;
+                          });
+                          initializeSelection();
+                        },
+                    )
+                    : const SizedBox(),
+                      actions: <Widget>[
+                        if (isSelectionMode)
+                          IconButton(
+                            onPressed: () {
+                              // Insert delete function here
+                              print(_selected);
 
-                },
-                icon: Icon(Icons.delete)
+                            },
+                            icon: Icon(Icons.delete)
+                          ),
+                          TextButton(
+                            child:
+                              !_selectAll
+                                ? const Text('select all', style: TextStyle(color: Colors.black))
+                                : const Text('unselect all', style: TextStyle(color: Colors.black)),
+                            onPressed: () {
+                              _selectAll = !_selectAll;
+                              setState(() {
+                                _selected = List<bool>.generate(contact_list.length, (_) => _selectAll);
+                              });
+                            },
+                          ),
+                      ],
+                      toolbarHeight: isSelectionMode ? 50 : 0,
               ),
-              TextButton(
-                child:
-                  !_selectAll
-                    ? const Text('select all', style: TextStyle(color: Colors.black))
-                    : const Text('unselect all', style: TextStyle(color: Colors.black)),
-                onPressed: () {
-                  _selectAll = !_selectAll;
-                  setState(() {
-                    _selected = List<bool>.generate(contact_list!.length, (_) => _selectAll);
-                  });
-                },
-              ),
-          ],
-          toolbarHeight:
-            isSelectionMode ? 50 : 0,
-        ),
 
-        body:
-          isSearchingMode
-          ? ListView.builder(
-            itemCount: _filteredList!.length,
-            itemBuilder: (context, index) => ListTile(
-              leading: Icon(Icons.person),
-              title: Text(
-                _filteredList[index].name,
-                style: const TextStyle(color: Colors.black),
-              ),
-              onTap: () => {
-                if (isSelectionMode) {
+              body:
+                isSearchingMode
+                ? ListView.builder(
+                  itemCount: _filteredList!.length,
+                  itemBuilder: (context, index) => ListTile(
+                    leading: Icon(Icons.person),
+                    title: Text(
+                      _filteredList[index].name,
+                      style: const TextStyle(color: Colors.black),
+                    ),
+                    onTap: () => {
 
-                }
-              },
-              trailing:
-                isSelectionMode
-                  ? Checkbox(
-                    value: _selected[index],
-                    onChanged: (bool? x) => {
-                      setState(() {
-                        _selected[index] = !_selected[index];
-                      })
                     },
-                  )
-                  : const SizedBox.shrink(),
-            ),
-          )
-          : ListBuilder(
-            UIcontactList: contact_list!,
-            isSelectionMode: isSelectionMode,
-            selectedList: _selected,
-            onSelectionChange: (bool x) {
-              setState(() {
-                isSelectionMode = x;
-              });
-            },
-          ),
-      ),
+                    trailing:
+                      isSelectionMode
+                        ? Checkbox(
+                          value: _selected[index],
+                          onChanged: (bool? x) => {
+                            setState(() {
+                              _selected[index] = !_selected[index];
+                            })
+                          },
+                        )
+                        : const SizedBox.shrink(),
+                  ),
+                )
+                : ListBuilder(
+                  UIcontactList: contact_list,
+                  isSelectionMode: isSelectionMode,
+                  selectedList: _selected,
+                  onSelectionChange: (bool x) {
+                    setState(() {
+                      isSelectionMode = x;
+                    });
+                  },
+                ),
+            );
+          }
+          else {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+        }
+      )
+      
+      
     );
   }
 }
@@ -245,11 +238,9 @@ class ListBuilder extends StatefulWidget {
 
 class _ListBuilderState extends State<ListBuilder> {
   void _toggle(int index) {
-    if (widget.isSelectionMode) {
-      setState(() {
-        widget.selectedList[index] = !widget.selectedList[index];
-      });
-    }
+    setState(() {
+      widget.selectedList[index] = !widget.selectedList[index];
+    });
   }
 
   @override
@@ -259,7 +250,51 @@ class _ListBuilderState extends State<ListBuilder> {
       itemBuilder: (_, int index) {
         return ListTile(
           leading: Icon(Icons.person),
-          onTap: () => _toggle(index),
+          onTap: () => {
+            if (widget.isSelectionMode) {
+              _toggle(index)
+            }
+            else {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => Scaffold(
+                  appBar: AppBar(
+                    title: Text('Details'),
+                    centerTitle: true,
+                    backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
+                    foregroundColor: Colors.white,
+                  ),
+                  body: Column( // Left off here 
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.all(10.0),
+                      ),
+                      Center(
+                        child: CircleAvatar(
+                          backgroundImage: Image.memory(widget.UIcontactList[index].pic).image,
+                          radius: 100,
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(10.0),
+                      ),
+
+                      ListTile(
+                        title: Text(widget.UIcontactList[index].name),
+                        onTap: () => {
+
+                        },
+                      ),
+                      ListTile(
+                        title: Text(widget.UIcontactList[index].id),
+                      ),
+
+                      
+                    ],
+                  )
+                ))
+              )
+            }
+          },
           onLongPress: () {
             if (!widget.isSelectionMode) {
               setState(() {
