@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 
 import 'package:dmaft/client_db.dart';
@@ -13,50 +12,40 @@ class ContactsScreen extends StatefulWidget {
 
 class _ContactsScreenState extends State<ContactsScreen> {
 
+  // Allows us to search in the appbar textfield.
   final TextEditingController _searchController = TextEditingController();
 
+  // Allows us to access the client database, the contents of which are stored locally on device.
   final ClientDB database_service = ClientDB.instance;
 
-  List<Contact> contact_list = [Contact(id: 'test', name: 'test', status: 'test', bio: 'test', pic: Uint8List(10))]; // This works.
-
+  List<Contact> contact_list = [Contact(id: 'test', name: 'test', pronouns: 'test', bio: 'test', pic: Uint8List(10), lastModified: '2025-03-15')]; // Placeholder list. Will remove.
   List<Contact> _filteredList = [];
-
+  late List<bool> _selected; // List is generated later once the contacts are loaded in.
+  
   bool isSearchingMode = false;
   bool isSelectionMode = false;
-  late List<bool> _selected;
   bool _selectAll = false;
 
   @override
   void initState() {
-    // super.initState();
-
-    get_contact_info().then((response) {
+    get_contact_info().then((response) { // Initializes the lists used for displaying and filtering (searching) contacts.
       setState(() {
         contact_list = response;
       });
       initializeSelection();
       _filteredList = contact_list;
-
-      print('Contact List in setState():');
-      print(contact_list);
-
     });
-
-    print('Contact List outside setState():');
-    print(contact_list);
-
-    
-    _searchController.addListener(_performSearch);
-
+    _searchController.addListener(_performSearch); // Adds a listener so that we can search contacts.
     super.initState();
   }
 
+  // Gets the contacts from the client database.
   Future<List<Contact>> get_contact_info() async {
-    var db_contacts = await database_service.getContacts(); // For some reason the contact list is not updating here.
+    var db_contacts = await database_service.getContacts();
     return db_contacts;
   }
 
-  void initializeSelection() { // COME BACK HERE
+  void initializeSelection() {
     _selected = List<bool>.generate(contact_list.length, (_) => false);
   }
 
@@ -66,6 +55,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     super.dispose();
   }
 
+  // Toggles searching mode depending on if the user types in the text field.
   Future<void> _performSearch() async {
     setState(() {
       if (isSelectionMode) {
@@ -76,7 +66,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         _filteredList = contact_list
           .where((element) => element.name
             .toLowerCase()
-            .startsWith(_searchController.text.toLowerCase()))
+            .contains(_searchController.text.toLowerCase()))
           .toList();
       }
       else {
@@ -89,7 +79,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       appBar: AppBar(
         leading: Icon(Icons.search),
         flexibleSpace: Container(
@@ -178,6 +167,55 @@ class _ContactsScreenState extends State<ContactsScreen> {
                       style: const TextStyle(color: Colors.black),
                     ),
                     onTap: () => {
+                      
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => Scaffold(
+                          appBar: AppBar(
+                            title: Text('Details'),
+                            centerTitle: true,
+                            backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
+                            foregroundColor: Colors.white,
+                          ),
+                          body: Column( // Left off here 
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.all(10.0),
+                              ),
+                              Center(
+                                child: CircleAvatar(
+                                  backgroundImage: Image.memory(_filteredList[index].pic).image,
+                                  radius: 100,
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.all(10.0),
+                              ),
+
+                              ListTile(
+                                title: Text(_filteredList[index].name),
+                                titleAlignment: ListTileTitleAlignment.center, // Not working. Might substitute listtiles for center or another widget.
+                              ),
+                              ListTile(
+                                title: Text(_filteredList[index].id),
+                                titleAlignment: ListTileTitleAlignment.center,
+                              ),
+                              ListTile(
+                                title: Text(_filteredList[index].pronouns),
+                                titleAlignment: ListTileTitleAlignment.center,
+                              ),
+                              ListTile(
+                                title: Text(_filteredList[index].bio),
+                                titleAlignment: ListTileTitleAlignment.center,
+                              ),
+                              ListTile(
+                                title: Text(_filteredList[index].lastModified),
+                                titleAlignment: ListTileTitleAlignment.center,
+                              ),
+
+                            ],
+                          )
+                        ))
+                      )
 
                     },
                     trailing:
@@ -256,6 +294,7 @@ class _ListBuilderState extends State<ListBuilder> {
             }
             else {
               Navigator.of(context).push(
+
                 MaterialPageRoute(builder: (context) => Scaffold(
                   appBar: AppBar(
                     title: Text('Details'),
@@ -280,18 +319,25 @@ class _ListBuilderState extends State<ListBuilder> {
 
                       ListTile(
                         title: Text(widget.UIcontactList[index].name),
-                        onTap: () => {
-
-                        },
+                        titleAlignment: ListTileTitleAlignment.center,
                       ),
                       ListTile(
-                        title: Text(widget.UIcontactList[index].id),
+                        title: Text(widget.UIcontactList[index].pronouns),
+                        titleAlignment: ListTileTitleAlignment.center,
+                      ),
+                      ListTile(
+                        title: Text(widget.UIcontactList[index].bio),
+                        titleAlignment: ListTileTitleAlignment.center,
+                      ),
+                      ListTile(
+                        title: Text(widget.UIcontactList[index].lastModified),
+                        titleAlignment: ListTileTitleAlignment.center,
                       ),
 
-                      
                     ],
                   )
                 ))
+
               )
             }
           },
