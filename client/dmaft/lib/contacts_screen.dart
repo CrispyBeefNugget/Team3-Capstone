@@ -15,7 +15,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   final ClientDB database_service = ClientDB.instance;
 
-  List<Contact> ?contact_list = []; // This works.
+  List<Contact> contact_list = [];
 
   // List<String> testList = [
   //   'Dallin Parry',
@@ -52,30 +52,19 @@ class _ContactsScreenState extends State<ContactsScreen> {
     super.initState();
     get_contact_info();
     initializeSelection();
-    print('Contact List:');
-    
-    print(contact_list);
-
-    
     _searchController.addListener(_performSearch);
-
-    
   }
 
-  void get_contact_info() async {
-
+  Future<void> get_contact_info() async {
     contact_list = await database_service.getContacts(); // For some reason the contact list is not updating here.
-    _filteredList = contact_list!;
-
+    _filteredList = contact_list;
+      
   }
 
   void initializeSelection() { // COME BACK HERE
     // testList.sort();
     // testList.add('Test Test');
-    if (contact_list == Null) {
-      get_contact_info();
-    }
-    _selected = List<bool>.generate(contact_list!.length, (_) => false);
+    _selected = List<bool>.generate(contact_list.length, (_) => false);
   }
 
   @override
@@ -99,7 +88,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
       }
       else {
         isSearchingMode = false;
-        _filteredList = contact_list!;
+        _filteredList = contact_list;
       }
     });
   }
