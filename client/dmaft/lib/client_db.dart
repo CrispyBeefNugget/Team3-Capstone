@@ -2,7 +2,6 @@ import 'dart:typed_data';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:async';
-import 'dart:convert';
 
 
 
@@ -47,6 +46,7 @@ class Contact {
   String status; //The user's status, a short message indicating a current mood or other tidbit.
   String bio; //The user's biography as set in their profile. 
   Uint8List pic; //A list of 8-bit unsigned integers containing a representation of the user's profile picture.
+  String lastModified; //A string in DateTime format indicating when the contact when last updated.
 
   Contact({
     required this.id,
@@ -54,6 +54,7 @@ class Contact {
     required this.status,
     required this.bio,
     required this.pic,
+    required this.lastModified,
   });
 }
 
@@ -63,10 +64,12 @@ class Contact {
 class Conversation {
   final String convoID; //The unique convoID of the conversation.
   List<String> convoMembers; //A list of userIDs for users participating in the conversation.
+  String lastModified;
 
   Conversation({
     required this.convoID,
     required this.convoMembers,
+    required this.lastModified,
   });
 }
 
@@ -120,10 +123,12 @@ class ClientDB{
   final String _contactsStatusName = "userStatus";
   final String _contactsBioName = "userBio";
   final String _contactsPictureName = "userProfilePic";
+  final String _contactsLastModifiedName = "lastModified";
   
   final String _conversationTableName = "conversationTable";
   final String _convoIDName = "convoID";
   final String _convoMembersName = "convoMembers";
+  final String _convoLastModifiedName = "lastModified";
 
   final String _msglogsMessageIDName = "msgID";
   final String _msglogsMessageTypeName = "msgType";
@@ -159,7 +164,8 @@ class ClientDB{
             $_contactsNameName TEXT NOT NULL, 
             $_contactsStatusName TEXT NOT NULL,
             $_contactsBioName TEXT NOT NULL,
-            $_contactsPictureName BLOB NOT NULL
+            $_contactsPictureName BLOB NOT NULL,
+            $_contactsLastModifiedName TEXT NOT NULL
           )
         """);
         
@@ -167,7 +173,8 @@ class ClientDB{
         db.rawQuery("""
           CREATE TABLE "$_conversationTableName" (
             $_convoIDName TEXT PRIMARY KEY, 
-            $_convoMembersName TEXT NOT NULL
+            $_convoMembersName TEXT NOT NULL,
+            $_convoLastModifiedName TEXT NOT NULL,
         )
         """);
       }
@@ -198,6 +205,7 @@ class ClientDB{
         _contactsStatusName: contact.status,
         _contactsBioName: contact.bio,
         _contactsPictureName: contact.pic,
+        _contactsLastModifiedName: contact.lastModified,
       }
     );
   }
@@ -244,10 +252,9 @@ class ClientDB{
           status: e[_contactsStatusName] as String,
           bio: e[_contactsBioName] as String,  
           pic: e[_contactsPictureName] as Uint8List,
+          lastModified: e[_contactsLastModifiedName] as String,
         )
       ).toList().cast<Contact>(); //Cast dynamic type data to Contact type.
-    print('Method call');
-    print(contacts);
     return contacts;
   }
 
@@ -267,12 +274,13 @@ class ClientDB{
       SET 
       $_contactsNameName = ?,
       $_contactsStatusName = ?, 
-      $_contactsBioName = ?
+      $_contactsBioName = ?,
+      $_contactsLastModifiedName = ?
       
       WHERE 
       $_contactsIDName = ?
       """,
-      [contact.name, contact.status, contact.bio, contact.id]
+      [contact.name, contact.status, contact.bio, contact.id, contact.lastModified]
     );
   }
 
@@ -314,6 +322,7 @@ class ClientDB{
       {
         _convoIDName: convo.convoID,
         _convoMembersName: convo.convoMembers.join(","),
+        _convoLastModifiedName: convo.lastModified,
       }
     );
   }
@@ -346,6 +355,7 @@ class ClientDB{
         (e) => Conversation( //Map database data into Conversation class fields. Splits convo members around commas to reform a list.
           convoID: targetConvoID,
           convoMembers: e[_convoMembersName].split(",") as List<String>, 
+          lastModified: e[_convoLastModifiedName],
         )
       ).toList().cast<Conversation>(); //Cast dynamic type data to Conversation type.
     return convo;
@@ -377,6 +387,7 @@ class ClientDB{
         (e) => Conversation( //Map database data into Conversation class fields. Splits convo members around commas to reform a list.
           convoID: e[_convoIDName] as String,
           convoMembers: e[_convoMembersName].split(",") as List<String>, 
+          lastModified: e[_convoLastModifiedName],
         )
       ).toList().cast<Conversation>(); //Cast dynamic type data to Conversation type.
     return convos;
@@ -394,10 +405,12 @@ class ClientDB{
     final db = await database;
     await db.rawQuery("""
       UPDATE $_conversationTableName 
-      SET $_convoMembersName = ?
+      SET 
+      $_convoMembersName = ?,
+      $_convoLastModifiedName = ?
       WHERE $_convoIDName = ?
       """,
-      [convo.convoMembers.join(","), convo.convoID] //Convomembers list elements are joined into a string and separated by commas for storage.
+      [convo.convoMembers.join(","), convo.lastModified, convo.convoID] //Convomembers list elements are joined into a string and separated by commas for storage.
     );
   }
 
