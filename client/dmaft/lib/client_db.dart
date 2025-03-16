@@ -17,7 +17,7 @@ import 'dart:async';
 
 
 
-//My be thrown for some database queries if no results are found.
+//May be thrown for some database queries if no results are found.
 class NoRowsException implements Exception{
   final String cause;
   NoRowsException(this.cause);
