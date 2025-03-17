@@ -46,6 +46,8 @@ newConversationMsgFormat = {
     'ClientTimestamp':'',
 }
 
+
+
 sendMessageMsgFormat = {
     'Command':'SENDMESSAGE',
     'TokenId':'',
@@ -92,6 +94,8 @@ newConvoPolicyMsgFormat = {
         },
     }
 }
+
+
 
 
 

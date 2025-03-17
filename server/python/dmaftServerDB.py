@@ -1,4 +1,5 @@
 from cryptography.hazmat.primitives.asymmetric import rsa
+import json
 import sqlite3
 import random
 import time
@@ -101,7 +102,7 @@ def connectDB():
 
 def startDB():
     correctSchemas = [
-        [('CREATE TABLE tblRegisteredUsers (UserID TINYTEXT NOT NULL PRIMARY KEY, UserPublicKeySHA2_512 BLOB(64) NOT NULL, ConversationIDs BLOB)',)],
+        [('CREATE TABLE "tblRegisteredUsers" (\n\t"UserID"\tTINYTEXT NOT NULL,\n\t"UserPublicKeySHA2_512"\tBLOB(64) NOT NULL,\n\t"ConversationIDs"\tBLOB,\n\t"UserName"\tTEXT,\n\t"Status"\tTEXT,\n\t"Bio"\tTEXT,\n\t"ProfilePic"\tBLOB,\n\tPRIMARY KEY("UserID")\n)',)],
         [('CREATE TABLE tblConversations (ConversationID TINYTEXT NOT NULL PRIMARY KEY, Participants BLOB NOT NULL)',)],
         [('CREATE TABLE tblMailbox (ConversationID TINYTEXT NOT NULL, ArriveTimestamp INT, ExpireTimestamp INT NOT NULL, Recipient TINYTEXT NOT NULL, Message LONGBLOB(60000000) NOT NULL, FOREIGN KEY(Recipient) REFERENCES tblRegisteredUsers(UserID))',)],
         [('CREATE TABLE tblChallenges (ChallengeID TINYTEXT NOT NULL PRIMARY KEY, Challenge BLOB NOT NULL, UserPublicKey BLOB NOT NULL, User TINYTEXT, ExpireTimestamp INT NOT NULL, FOREIGN KEY(User) REFERENCES tblRegisteredUsers(UserID))',)],
@@ -122,7 +123,12 @@ def startDB():
     for properSchema in correctSchemas:
         if properSchema not in schemas:
             conn.close()
-            raise RuntimeError("Expected table schema is missing from database: " + properSchema)
+            print("Schema mismatch!")
+            print("Expected schema:", properSchema[0][0])
+            print("Actual schemas:")
+            for schema in schemas:
+                print(schema)
+            raise RuntimeError("Expected table schema is missing from database: " + properSchema[0][0])
     
     return conn
 
@@ -274,9 +280,34 @@ def registerUser(*, connection: sqlite3.Connection, publicKey: rsa.RSAPublicKey)
             connection.commit()
         return newUserUUID
     except Exception as e:
-        print("Unable to register new user:", e)
+        print("Unable to register new user: ", e)
         return None
 
+#Searches the database by UserID.
+#Returns a list of results if successful and None if failed.
+def getUserByID(*, connection: sqlite3.Connection, userID: str):
+    try:
+        with connection:
+            stmt = 'SELECT * FROM tblRegisteredUsers WHERE UserID = ?;'
+            cursor = connection.execute(stmt, [userID])
+            results = cursor.fetchall()
+            return results
+    except Exception as e:
+        print("Unable to query the registered users table: ", e)
+        return None
+    
+#Searches the database by UserName.
+#Returns a list of results if successful and None if failed.
+def getUsersByName(*, connection: sqlite3.Connection, userName: str):
+    try:
+        with connection:
+            stmt = 'SELECT * FROM tblRegisteredUsers WHERE UserName = ?;'
+            cursor = connection.execute(stmt, [userName])
+            results = cursor.fetchall()
+            return results
+    except Exception as e:
+        print("Unable to query the registered users table: ", e)
+        return None
 
 #Deletes any expired tokens.
 #Should run this method BEFORE verifying a token.
@@ -422,4 +453,166 @@ def deleteTokensWithUserID(*, connection: sqlite3.Connection, userID: str):
         return True
     except Exception as e:
         print("Unable to delete target records: ", e)
+        return False
+    
+
+#Creates a new conversation for the given participants.
+#Returns the new conversation UUID if successful, and None if failed.
+#Raises a ValueError if any provided UserIDs don't exist in the database system.
+def createNewConversation(*, connection: sqlite3.Connection, userIDs: list[str]):
+    #Make sure the provided users all exist
+    for userID in userIDs:
+        if not doesUserExist(connection=connection, userID=userID):
+            raise ValueError("User ID", userID, "is not registered in the database!")
+    
+    #Serialize the userlist into JSON so we can store it
+    jsonUserIDs = json.dumps(userIDs)
+
+    result = executeQuery(connection = connection, query = 'SELECT ConversationID from tblConversations;')
+    if result is None:
+        #Unable to list the current UUIDs
+        return None
+    
+    #Make sure that the new conversation ID we generate doesn't conflict with any existing ones
+    currentUUIDs = []
+    for row in result:
+        currentUUIDs.append(str(row[0]).upper())
+
+    while True:
+        convoUUID = str(uuid.uuid4()).upper()
+        if convoUUID not in currentUUIDs:
+            break
+    
+    try:
+        with connection:
+            newConvoStmt = 'INSERT INTO tblConversations (ConversationID, Participants) VALUES (?,?);'
+            connection.execute(newConvoStmt, (convoUUID, jsonUserIDs))
+            connection.commit()
+        return convoUUID
+    except Exception as e:
+        print("Unable to create conversation:", e)
+        return None
+    
+
+#Searches the database by ConversationID.
+#Returns a list of results if successful and None if failed.
+def getConversationByID(*, connection: sqlite3.Connection, conversationID: str):
+    try:
+        with connection:
+            stmt = 'SELECT * FROM tblConversations WHERE ConversationID = ?;'
+            cursor = connection.execute(stmt, [conversationID])
+            results = cursor.fetchall()
+            return results
+    except Exception as e:
+        print("Unable to query the conversation table: ", e)
+        return None
+    
+
+def doesConversationExist(*, connection: sqlite3.Connection, conversationID: str):
+    result = executeQuery(connection = connection, query = 'SELECT ConversationID from tblConversations;')
+    if result is None:
+        #Unable to list the current UUIDs
+        raise RuntimeError("dmaftServerDB.doesConversationExist(): Failed to list all registered conversations!")
+    
+    currentConvoIDs = []
+    for row in result:
+        currentConvoIDs.append(str(row[0]).upper())
+
+    return (conversationID.upper() in currentConvoIDs)
+    
+
+
+#MAILBOX DATA
+
+#Adds a message to the mailbox for the recipient, to be delivered later.
+#Returns True if successful and False if not.
+#Raises a ValueError if the specified ExpireTime exists in the past,
+#or if the specified recipient isn't a registered user.
+def addToMailbox(*, connection: sqlite3.Connection, conversationID: str, expireTime: int, recipientID: str, msgDict: dict):
+    #Make sure the expire time is valid.
+    currentTime = int(time.time())
+    if currentTime > expireTime:
+        raise ValueError("The expire time must be later than the current time!")
+    
+    #Make sure that we have a valid conversation.
+    if not doesConversationExist(connection=connection, conversationID=conversationID):
+        raise ValueError("The provided conversation ID doesn't exist!")
+    
+    #Make sure the specified recipient is a member of this conversation
+    conversations = getConversationByID(connection=connection, conversationID=conversationID)
+    if len(conversations) != 1:
+        raise RuntimeError("dmaftServerDB.addToMailbox(): " + str(len(conversations)) + " were found for conversation ID " + conversationID + "! Database corruption has likely occurred.")
+    
+    convoRecord = conversations[0]
+    userlist = json.loads(convoRecord[1])
+    for user in userlist:
+        user = user.upper()
+    if recipientID.upper() not in userlist:
+        raise ValueError("dmaftServerDB.addToMailbox(): The specified recipient user ID", recipientID, "is not a member of conversation", conversationID,"!")
+
+    msgData = json.dumps(msgDict)
+
+    try:
+        with connection:
+            insertMailboxStmt = 'INSERT INTO tblMailbox (ConversationID, ArriveTimestamp, ExpireTimestamp, Recipient, Message) VALUES (?,?,?,?,?);'
+            connection.execute(insertMailboxStmt, (conversationID, currentTime, expireTime, recipientID, msgData))
+            connection.commit()
+        return True
+    except Exception as e:
+        print("Unable to save message to mailbox:", e)
+        return False
+    
+
+#WARNING: RUNNING THIS MIGHT RESULT IN DISCREPANCIES BETWEEN SENDER AND RECEIVER CLIENTS.
+#THERE IS CURRENTLY NO WAY TO NOTIFY THE SENDER THAT THE RECIPIENT NEVER GOT THEIR MESSAGE.
+#Returns True if successful and False if not.
+def purgeOldMailboxItems(connection: sqlite3.Connection):
+    try:
+        with connection:
+            msgPruneStmt = "DELETE FROM tblMailbox WHERE ExpireTimestamp < ?;"
+            currentTime = str(int(time.time()))
+            connection.execute(msgPruneStmt)
+            connection.commit()
+        return True
+    except Exception as e:
+        print("Failed to remove old messages from the mailbox:", e)
+        return False
+    
+#Returns a list if successful and None if failed.
+def getMsgsForUser(*, connection: sqlite3.Connection, userID: str):
+    try:
+        with connection:
+            stmt = 'SELECT ROWID, * FROM tblMailbox WHERE Recipient = ?;' #The RowID is an automatic primary key for each table and enables targeted deletion. It must be explicitly requested.
+            cursor = connection.execute(stmt, [userID])
+            return cursor.fetchall()
+    except Exception as e:
+        print("Unable to query the mailbox:", e)
+        return None
+    
+#Returns True if successful and False if not.
+#Valid deletion commands targeting zero rows will still return True.
+#Treat False as if an error occurred.
+def deleteMsgFromMailbox(*, connection: sqlite3.Connection, rowID: int):
+    try:
+        with connection:
+            msgDeleteStmt = 'DELETE FROM tblMailbox WHERE ROWID = ?;'
+            connection.execute(msgDeleteStmt, [rowID])
+            connection.commit()
+        return True
+    except Exception as e:
+        print("Failed to delete the specified message:", e)
+        return False
+
+#Returns True if successful and False if not.
+#Valid deletion commands targeting zero rows will still return True.
+#Treat False as if an error occurred.
+def deleteAllMsgsForUser(*, connection: sqlite3.Connection, userID: int):
+    try:
+        with connection:
+            msgDeleteStmt = 'DELETE FROM tblMailbox WHERE Recipient = ?;'
+            connection.execute(msgDeleteStmt, [userID])
+            connection.commit()
+        return True
+    except Exception as e:
+        print("Failed to delete messages for user", userID, ":", e)
         return False

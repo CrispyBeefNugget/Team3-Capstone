@@ -9,6 +9,7 @@ import json
 import time
 import random
 import ssl
+import traceback
 import websockets
 import websockets.asyncio
 import websockets.asyncio.server
@@ -261,6 +262,7 @@ async def listen(websocket: websockets.asyncio.server.ServerConnection):
                 print("ERROR: handleRequest threw an exception.")
                 print("Exception Info:")
                 print(e, '\n')
+                print(traceback.format_exc())
                 serverReply = makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Server failed to process the request.')
                 await websocket.send(json.dumps(serverReply))
 

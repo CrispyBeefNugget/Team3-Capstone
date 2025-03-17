@@ -46,6 +46,27 @@ class Network {
     }
   }
 
+  void _leakPrivateKey() {
+    if (_privateKey != null) {
+      print("Private key (p, q, n, e, d):");
+      print(_privateKey!.p);
+      print(_privateKey!.q);
+      print(_privateKey!.n);
+      print(_privateKey!.publicExponent);
+      print(_privateKey!.privateExponent);
+    }
+    return;
+  }
+
+  void setUserID(String userID) {
+    _userID = userID;
+    return;
+  }
+
+  String? getUserID() {
+    return _userID;
+  }
+
 
   //Method: importKeys().
   //Imports the given RSA private key and derives the corresponding RSA public key.
@@ -110,7 +131,7 @@ class Network {
   //connection to the specified server and attempts to authenticate.
   //Parameters: WebSocket server address.
   //Returns: Nothing if successful, an exception if unsuccessful.
-  void connectAndAuth(String serverWbsAddr) async {
+  Future<bool> connectAndAuth(String serverWbsAddr) async {
     await _connect(serverWbsAddr);
     
     //Generate and send a challenge BEFORE configuring the listener.
@@ -135,7 +156,30 @@ class Network {
       _handleServerResponse(msg);
     }
 
-    print("Authentication handshake complete!");
+    //Authentication handshake is complete.
+    //First, check if we're registered.
+    if (_userID == null) {
+      print("Failed to register!");
+      return false;
+    }
+    //Check if we have a token.
+    if ((_tokenID == null) || (_tokenSecret == null)) {
+      print("Failed to obtain authentication token!");
+      return false;
+    }
+
+    //We have everything we need.
+    //Initiate a connection to the server and return success.
+    await _connect(serverWbsAddr);
+    _serverSock!.stream.listen(
+      (msg) {
+        _handleServerResponse(msg);
+      }
+    );
+    print("Network is initialized and ready! :D");
+    print(_userID);
+    _leakPrivateKey();
+    return true;
   }
 
   //Method: _handleServerResponse().
