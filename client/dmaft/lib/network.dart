@@ -11,14 +11,11 @@ import 'package:web_socket_channel/status.dart' as status;
 import 'dart:convert';
 
 class Network {
-  static bool _allowJunk = false;         //If false, the client will shut down the connection if it receives any junk data from the server. False in authentication contexts; True in connected contexts.
+  static final _defaultServerURL = 'wss://10.0.2.2:8765';
+  static var _serverURL = '';
+  static bool _allowJunk = false;         //If false, shut down the connection if it receives any junk data from the server. False in pre-auth or auth contexts; True in post-auth contexts.
   static WebSocketChannel? _serverSock;   //The WebSocket connection to the server is stored here while active.
-  static final StreamController _clientSock = StreamController(
-    onPause: () => print('Client stream paused.'),
-    onResume: () => print('Client stream resumed.'),
-    onCancel: () => print('Client stream cancelled.'),
-    onListen: () => print('A client is listening!'),
-  );   //The send-to-client event stream is stored here while a server WebSocket connection is active.
+  late final StreamController clientSock;   //The send-to-client event stream is stored here while a server WebSocket connection is active. Gets initialized in the constructor.
   static RSAPublicKey? _publicKey;
   static RSAPrivateKey? _privateKey;
   static String? _userID;
@@ -31,8 +28,27 @@ class Network {
   factory Network() {
     return instance;
   }
-  Network._constructor();
+  Network._constructor() {
+    resetServerURL();
+    clientSock = StreamController(
+    onPause: () => _stopServerConnection(),
+    onResume: () => _startServerConnection(),
+    onCancel: () => _stopServerConnection(),
+    onListen: () => _startServerConnection(),
+  );
+  }
 
+  String getServerURL() {
+    return _serverURL;
+  }
+
+  void setServerURL(String newServerURL) {
+    _serverURL = newServerURL;
+  }
+
+  void resetServerURL() {
+    _serverURL = _defaultServerURL;
+  }
 
   void initRandomUserKeys() {
     final pair = generateRSAkeyPair(exampleSecureRandom());
@@ -44,6 +60,27 @@ class Network {
     catch(e) {
       print("User keypair has already been set and cannot be changed.");
     }
+  }
+
+  void _leakPrivateKey() {
+    if (_privateKey != null) {
+      print("Private key (p, q, n, e, d):");
+      print(_privateKey!.p);
+      print(_privateKey!.q);
+      print(_privateKey!.n);
+      print(_privateKey!.publicExponent);
+      print(_privateKey!.privateExponent);
+    }
+    return;
+  }
+
+  void setUserID(String userID) {
+    _userID = userID;
+    return;
+  }
+
+  String? getUserID() {
+    return _userID;
   }
 
 
@@ -71,17 +108,49 @@ class Network {
     return _publicKey;
   }
 
+
+  //CLIENT STREAM HANDLER METHODS HERE
+
+  //Method: _startServerConnection().
+  //Directs this object to connect to the currently-set server URL.
+  //This method should only be called by the _clientSock StreamController,
+  //when the UI starts listening for network connectivity.
+  void _startServerConnection() async {
+    try {
+      if ((_userID != null) && (_tokenID != null) && (_tokenSecret != null)) {
+        _allowJunk = true;
+        await _connect(_serverURL);
+        clientSock.add("To the UI: successfully connected to server!");
+      }
+      else {
+        _allowJunk = false;
+        await _connectAndAuth(_serverURL);
+        clientSock.add("To the UI: successfully connected and authenticated to server!");
+      }
+    }
+    catch (e) {
+      clientSock.add("Failed to connect to server URL " + _serverURL);
+    }
+  }
+
+  void _stopServerConnection() {
+    _disconnect(_allowJunk);
+  }
+
+  /*
+  SERVER-SIDE SOCKET HANDLING GOES HERE
+  */
+
   //Closes the connection when server junk isn't allowed (i.e. in authentication contexts).
   void handleJunk() {
     if (! _allowJunk) {
       print("Network.handleJunk(): Junk isn't allowed; closing the connection.");
-      _serverSock!.sink.close();
-      _serverSock = null;
+      _disconnect(_allowJunk);
     }
     return;
   }
 
-  //Method: connect().
+  //Method: _connect().
   //Connects to the specified WebSocket server address and stores the resulting WebSocketChannel inside this object.
   //This should NOT be used by external customers to connect to the server; it does not configure a listener nor authenticate.
   //Parameters: Server's WebSocket address.
@@ -105,12 +174,27 @@ class Network {
     _serverSock = channel;
   }
 
+  //Method: _disconnect().
+  //Disconnects from the currently-connected WebSocket server.
+  //Does NOT impact the client-side stream in any way.
+  void _disconnect(bool allowJunkNextTime) async {
+    try {
+      await _serverSock!.sink.close(3000);
+      _serverSock = null;
+    }
+    catch (e) {
+      //Do nothing.
+      //If we fell into here, the server socket was probably null.
+    }
+    _allowJunk = allowJunkNextTime;
+  }
+
   //Method: connectAndAuth().
   //Confirms that a valid RSA keypair is set, then starts a network
   //connection to the specified server and attempts to authenticate.
   //Parameters: WebSocket server address.
   //Returns: Nothing if successful, an exception if unsuccessful.
-  void connectAndAuth(String serverWbsAddr) async {
+  Future<bool> _connectAndAuth(String serverWbsAddr) async {
     await _connect(serverWbsAddr);
     
     //Generate and send a challenge BEFORE configuring the listener.
@@ -135,7 +219,29 @@ class Network {
       _handleServerResponse(msg);
     }
 
-    print("Authentication handshake complete!");
+    //Authentication handshake is complete.
+    //First, check if we're registered.
+    if (_userID == null) {
+      print("Failed to register!");
+      return false;
+    }
+    //Check if we have a token.
+    if ((_tokenID == null) || (_tokenSecret == null)) {
+      print("Failed to obtain authentication token!");
+      return false;
+    }
+
+    //We have everything we need.
+    //Initiate a connection to the server and return success.
+    await _connect(serverWbsAddr);
+    _serverSock!.stream.listen(
+      (msg) {
+        _handleServerResponse(msg);
+      }
+    );
+    print("Network is initialized and ready! :D");
+    print(_userID);
+    return true;
   }
 
   //Method: _handleServerResponse().
@@ -175,8 +281,8 @@ class Network {
       case 'AUTHENTICATE':
         _handleAuthResponse(parsedMsg);
         print("Process complete.");
-        print(_tokenID);
-        print(_userID);
+        print('Token ID: ' + _tokenID!);
+        print('User ID:' + _userID!);
     }
   }
 
@@ -232,11 +338,8 @@ Each of these handles a specific kind of message.
     _tokenSecret = b64d.convert(responseMsg['TokenSecret']);
     var sink = _serverSock!.sink;
     print("We're ready to close the connection now!");
-    sink = _serverSock!.sink;
-    await sink.close(3000); //why doesn't server Python raise an exception when it tries to send to this socket afterwards?
-    print("Sink should be closed now.");
-    _serverSock = null;
-    _allowJunk = true;
+    _disconnect(true);
+    print("Client should be disconnected; exiting _handleAuthResponse()...");
   }
 
 /*

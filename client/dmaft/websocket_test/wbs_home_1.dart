@@ -36,7 +36,11 @@ class DMAFT extends StatelessWidget {
     final pair1 = testKeypair1();
     net.setUserKeypair(pair1.privateKey);
     net.setUserID(id1);
-    net.connectAndAuth('wss://10.0.2.2:8765');
+    net.setServerURL('wss://10.0.2.2:8765');
+    net.clientSock.stream.listen((data) {
+      print(data);
+    });
+    print("Finished setting up the listener for the UI!");
     
     return const MaterialApp(
       home: SplashScreen(),

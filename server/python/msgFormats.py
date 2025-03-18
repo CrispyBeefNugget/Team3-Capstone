@@ -96,9 +96,6 @@ newConvoPolicyMsgFormat = {
 }
 
 
-
-
-
 #SERVER RESPONSE FORMAT
 
 #GENERALIZED:

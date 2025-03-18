@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-//import 'comms.dart';
 import 'network.dart';
 import 'dart:io';
 
@@ -32,8 +31,11 @@ class DMAFT extends StatelessWidget {
   Widget build(BuildContext context) {
     final net = Network();
     net.initRandomUserKeys();
-    net.connectAndAuth('wss://10.0.2.2:8765');
-    //testAuth();
+    net.setServerURL('wss://10.0.2.2:8765');
+    net.clientSock.stream.listen((data) {
+      print(data);
+    });
+    print("Finished setting up the listener for the UI!");
     return const MaterialApp(
       home: SplashScreen(),
       debugShowCheckedModeBanner: false,
