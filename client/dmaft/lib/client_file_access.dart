@@ -12,11 +12,15 @@ import 'dart:convert';
 
 
 
-//My be thrown by getDefaultPic if the default profile picture file cannot be found in the directory.
-class PicNotFoundException implements Exception{
+//The specified data can not be found.
+class NotFoundException implements Exception{
   final String cause;
-  PicNotFoundException(this.cause);
+  NotFoundException(this.cause);
 }
+
+
+
+
 
 
 
@@ -33,9 +37,9 @@ class FileAccess {
   
 
 
-  //------------------------------------------------------------------------------------------------------------------------------------------------------------
-  //Settings access
-  //------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+//Settings access
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
   
 
 
@@ -92,9 +96,9 @@ class FileAccess {
 
 
 
-  //------------------------------------------------------------------------------------------------------------------------------------------------------------
-  //Default profile picture access
-  //------------------------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+//Default profile picture access
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -110,7 +114,93 @@ class FileAccess {
     try{
       return File('$picPath/defaultProfilePic.png').absolute;
     } catch(e){
-      throw PicNotFoundException("Default profile picture could not be located in $picPath");
+      throw NotFoundException("Default profile picture could not be located in $picPath");
     }
+  }
+
+
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+//Secure communication data storage
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+  //Specify an options object for use with flutter_secure_storage. Allows accessing stored data while the app is in the background.
+  final options = IOSOptions(accessibility: KeychainAccessibility.first_unlock);
+  //Specify names for the RSA keys in storage. Can be altered to allow for a different number of keys than 5.
+  final List<String> keynames = ["RSAKey1", "RSAKey2", "RSAKey3", "RSAKey4", "RSAKey5"];
+
+
+
+  //Method: setUUID.
+  //Parameters: New UUID in String format to replace the currently stored UUID.
+  //Returns: Nothing.
+  //Example Usage: "await filehelper1.setUUID(<a_String>);".
+  //Description: Overwrites the contents of the UUID field in flutter secure storage with the given String. Stored persistently.
+  Future<void> setUUID(String newID) async{
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Store the new UUID in flutter secure storage.
+    await storage.write(key: "UUID", value: newID, iOptions: options);
+  }
+
+
+
+  //Method: getUUID.
+  //Parameters: None.
+  //Returns: The currently-stored UUID in String format.
+  //Example Usage: "String uuid1 = await filehelper1.getUUID();".
+  //Description: Fetches the UUID value currently stored in flutter secure storage and returns it as a String. Throws an exception if there is no UUID value
+  //  in storage.
+  Future<String> getUUID() async {
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Read and return the UUID currently in flutter secure storage and throw an error if there is no value present.
+    String ?uuid = await storage.read(key: "UUID");
+    if(uuid == null){
+      throw NotFoundException("No UUID exists in storage!");
+    }
+    return uuid;
+  }
+
+
+
+  //Method: setRSAKeys.
+  //Parameters: A list of Strings containing the RSA keys to be stored.
+  //Returns: Nothing.
+  //Example Usage: "await filehelper1.setRSAKeys(<a_list_of_Strings>);".
+  //Description: Overwrites the contents of the RSAKeys field in flutter secure storage with the provided list of new keys. Stored persistently.
+  Future<void> setRSAKeys(List<String> newkeys) async{
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Store each of the RSA keys in flutter secure storage.
+    for(int i = 0; i < newkeys.length; i++){
+      await storage.write(key: keynames[i], value: newkeys[i], iOptions: options);
+    }
+  }
+
+
+
+  //Method: getRSAKeys.
+  //Parameters: None.
+  //Returns: The currently-stored list of RSA Keys, each in String format.
+  //Example Usage: "List<String> keys = await filehelper1.getRSAKeys();".
+  //Description: Fetches each of the RSAKey Strings currently stored in flutter secure storage and returns them as a list of Strings. The list of keys is 
+  //  ordered exactly as the list of keys given to setRSAKeys was. Throws an exception if there are no RSAKey values in storage or if there are fewer
+  //  keys in storage than there are names in the "keynames" list at the start of the "Secure communication data storage" section.
+  Future<List<String>> getRSAKeys() async {
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Read and return the RSA keys currently in flutter secure storage and throw an error if there is no value present.
+    List<String> keys =[];
+    for(int i = 0; i < keynames.length; i++){
+      String ?key = await storage.read(key: keynames[i]);
+      if(key == null){
+        throw NotFoundException("Not enough RSA keys in storage!");
+      }
+      keys.add(key);
+    }
+    return keys;
   }
 }
