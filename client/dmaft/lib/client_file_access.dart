@@ -165,6 +165,20 @@ class FileAccess {
 
 
 
+  //Method: delUUID.
+  //Parameters: None.
+  //Returns: Nothing.
+  //Example Usage: "await filehelper1.delUUID();".
+  //Description: Deletes the currently-stored UUID from flutter secure storage. Will throw an exception if there is no UUID in storage.
+  Future<void> delUUID() async{
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Delete the stored uuid.
+    await storage.delete(key: "UUID", iOptions: options);
+  }
+
+
+
   //Method: setRSAKeys.
   //Parameters: A list of Strings containing the RSA keys to be stored.
   //Returns: Nothing.
@@ -205,6 +219,22 @@ class FileAccess {
 
 
 
+  //Method: delRSAKeys.
+  //Parameters: None.
+  //Returns: Nothing.
+  //Example Usage: "await filehelper1.delRSAKeys();".
+  //Description: Deletes all of the currently-stored RSA Keys from flutter secure storage. Will throw an exception if any aren't in storage.
+  Future<void> delRSAKeys() async{
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Delete each stored rsa key.
+    for(int i = 0; i < keynames.length; i++){
+      await storage.delete(key: keynames[i], iOptions: options);
+    }
+  }
+
+
+
   //Method: setTokenID.
   //Parameters: New TokenID in String format to replace the currently stored TokenID.
   //Returns: Nothing.
@@ -234,6 +264,20 @@ class FileAccess {
       throw NotFoundException("No TokenID exists in storage!");
     }
     return tokenid;
+  }
+
+
+
+  //Method: delTokenID.
+  //Parameters: None.
+  //Returns: Nothing.
+  //Example Usage: "await filehelper1.delTokenID();".
+  //Description: Deletes the currently-stored token ID from flutter secure storage. Will throw an exception if there is no TokenID in storage.
+  Future<void> delTokenID() async{
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Delete the stored tokenid.
+    await storage.delete(key: "TokenID", iOptions: options);
   }
 
 
@@ -275,11 +319,11 @@ class FileAccess {
   //Parameters: None.
   //Returns: Nothing.
   //Example Usage: "await filehelper1.delTokenSecret();".
-  //Description: Deletes the currently-stored token secret from flutter secure storage.
+  //Description: Deletes the currently-stored token secret from flutter secure storage. Will throw an exception if there is no TokenSecret in storage.
   Future<void> delTokenSecret() async{
     //Access flutter secure storage.
     final storage = FlutterSecureStorage();
-    //Store the new TokenSecret in flutter secure storage as a String.
-    await storage.write(key: "TokenSecret", value: utf8.decode(newToken), iOptions: options);
+    //Delete the stored tokensecret.
+    await storage.delete(key: "TokenSecret", iOptions: options);
   }
 }
