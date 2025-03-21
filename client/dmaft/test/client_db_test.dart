@@ -9,6 +9,11 @@ void main () async{
   
 final ClientDB databaseservice = ClientDB.instance; //Access ClientDB database.
   
+print((await databaseservice.getConvoMembers("1"))[0].name);
+print((await databaseservice.getConvoMembers("2"))[0].name);
+print((await databaseservice.getConvoMembers("3"))[0].name);
+
+  /*
 Contact user1 = Contact(id: "0", name: "User Userson", pronouns: "They/Them", bio: "testuserbio", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
 await databaseservice.modifyUser(user1);
 
@@ -70,4 +75,10 @@ await databaseservice.addMsgLog(msg5);
 */
  // databaseservice.modifyConvo(conv2);
   //databaseservice.modifyConvo(conv3);
+
+
+
+  */
+
+
 }
