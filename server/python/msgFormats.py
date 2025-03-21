@@ -46,8 +46,6 @@ newConversationMsgFormat = {
     'ClientTimestamp':'',
 }
 
-
-
 sendMessageMsgFormat = {
     'Command':'SENDMESSAGE',
     'TokenId':'',
@@ -55,8 +53,32 @@ sendMessageMsgFormat = {
     'UserId':'', #server-issued, permanent User ID. Might not be needed since the server-side DB already has the token associated with a user ID.
     'ConversationId':'', #server-issued Conversation ID.
     'ClientTimestamp': time.time(),
-    'MessageType':'',
+    'MessageType':['Text', 'Image', 'Video', 'File'],
     'MessageData':'', #text if a text-based message; base64-encoded bytes otherwise.
+}
+
+searchUsersMsgFormat = {
+    'Command':'SEARCHUSERS',
+    'TokenId':'',
+    'TokenSecret':'', #ephemeral token provided to 'securely' keep the session alive. Most major platforms use a token of some kind for continued auth.
+    'UserId':'', #server-issued, permanent User ID. Might not be needed since the server-side DB already has the token associated with a user ID.
+    'SearchBy':['UserId','UserName'],
+    'SearchTerm':'', #
+    'ClientTimestamp': time.time()
+}
+
+uploadProfileMsgFormat = {
+    'Command':'UPDATEPROFILE',
+    'TokenId':'',
+    'TokenSecret':'', #ephemeral token provided to 'securely' keep the session alive. Most major platforms use a token of some kind for continued auth.
+    'UserId':'', #server-issued, permanent User ID. Might not be needed since the server-side DB already has the token associated with a user ID.
+    'NewProfile': {
+        'UserName':'',
+        'UserProfilePic':'',
+        'UserStatus':'',
+        'UserBio':'',
+    },
+    'ClientTimestamp': time.time(),
 }
 
 #Not supported yet.
@@ -119,6 +141,8 @@ errorTypes = [
     {'ErrorType':'ServerInternalError'},
     {'ErrorType':'InvalidConversationId'},
     {'ErrorType':'InvalidUserId'},
+    {'ErrorType':'InvalidRecipientId'},
+    {'ErrorType':'NoRecipientsSpecified'},
     {
         'ErrorType':'UserBanned',
         'BanExpiry': time, #Cannot be non-None unless PermanentBan is False
@@ -163,6 +187,7 @@ incomingMessageMsgFormat = {
     'ServerTimestamp': time.time(), 
     'OriginalReceiptTimestamp':'', #timestamp of when the server received this message
     'SenderId':'', #server-issued ID for the sender.
+    'ConversationId':'',
     'MessageType':'',
     'MessageData':'',
 }
@@ -172,4 +197,20 @@ newConversationCreatedMsgFormat = {
     'ServerTimestamp': time.time(),
     'CreatorId':'', #server-issued ID for the user that created the conversation
     'Members':'', #server-issued User IDs for all participants in the conversation.
+    'ConversationId':'', #server-issued Conversation ID for this conversation.
+}
+
+searchUsersResponseMsgFormat = {
+    'Command':'SEARCHUSERS',
+    'Successful': True,
+    'SearchBy':['UserId','UserName'],
+    'SearchTerm':'', #
+    'ServerTimestamp': time.time(),
+    'Results':[{'UserId':'','UserName':''}, {'UserId':'','UserName':''}]
+}
+
+uploadProfileResponseMsgFormat = {
+    'Command':'UPDATEPROFILE',
+    'Successful': True,
+    'ServerTimestamp': time.time()
 }

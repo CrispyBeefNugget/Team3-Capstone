@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-//import 'comms.dart';
 import 'network.dart';
 import 'dart:io';
 import 'test_keys.dart';

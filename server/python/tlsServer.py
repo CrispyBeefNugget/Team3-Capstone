@@ -8,14 +8,16 @@ import hashlib
 import json
 import time
 import random
+import socket
 import ssl
 import traceback
 import websockets
 import websockets.asyncio
 import websockets.asyncio.server
 
-import crypto
+import clients
 import dmaftServerDB
+import handleAuth
 
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
@@ -24,16 +26,8 @@ ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
 
 ssl_context.load_cert_chain(ssl_cert, keyfile=ssl_key)
 
-connectedClients = [] #Holds a list of dictionaries with these keys: UserId -> (the client's UserId), Socket -> (the raw ServerSocket pointer)
+connectedClients = clients.ConnectionList()
 
-def getClientFromSocket(socket: websockets.asyncio.server.ServerConnection):
-    return list(filter(lambda client: client['SocketId'] == socket, connectedClients))
-    #Credit to here for this method: https://stackoverflow.com/a/25373204
-
-def deleteSocket(socket: websockets.asyncio.server.ServerConnection):
-    for client in connectedClients:
-        if client['SocketId'] == socket.id:
-            connectedClients.remove(client)
 
 def getRSAPublicKeySHA512(pubkey: rsa.RSAPublicKey):
     pubBytes = pubkey.public_bytes(encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo)
@@ -46,163 +40,257 @@ def handlePingMsg(clientRequest: dict):
     clientRequest['ServerTimestamp'] = time.time()
     return clientRequest
 
-#This needs to be renamed in the future.
-#The CONNECT keyword is reserved for clients wanting to start a conversation with each other.
-def handleConnectRequest(clientRequest: dict):
-    #Make sure we got a valid request
+
+#IMPORTANT: These methods assume the client is already authenticated!
+#Handle a request to search the list of users.
+#To preserve user privacy, only UserIDs and UserNames are returned by the database.
+def handleSearchUsersMsg(clientRequest: dict):
+    #Make sure we have a valid request
     keys = set(clientRequest.keys())
-    expectedKeys = {'Command','UserPublicKeyMod','UserPublicKeyExp','ClientTimestamp','UserId','Register'}
-    if keys != expectedKeys:
+    expectedKeys = {'Command','SearchBy','SearchTerm'}
+    if not expectedKeys.issubset(keys):
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more required JSON keys are missing from the request.')
 
-    if clientRequest['UserId'] in ['',None] and clientRequest['Register'] not in ['True','true', True]:
-        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Received challenge request with Register set to False and no UserId specified. Set Register to True to request a new account, or specify an existing UserId to log in to.')
+    sanityChecks = [
+        type(clientRequest['Command']) == str,
+        type(clientRequest['SearchBy']) == str,
+        type(clientRequest['SearchTerm']) == str,
+    ]
 
+    if False in sanityChecks:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One of the JSON keys is malformed or missing a required value.')
 
-    #If the client specified an account, make sure that user first exists
-    if clientRequest['UserId'] not in ['',None]:
-        dbConn = dmaftServerDB.startDB()
-        try:
-            if not dmaftServerDB.doesUserExist(connection=dbConn, userID=clientRequest['UserId']):
-                dmaftServerDB.closeDB(dbConn)
-                return makeError(clientRequest=clientRequest, errorCode='InvalidUserId', reason='The specified UserId does not exist. Please specify a different user or send a registration request.')
-        except:
-            dmaftServerDB.closeDB(dbConn)
-            return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', retry=True, reason='Failed to query the database to check if the specified user is registered.')
+    if not clientRequest['SearchBy'].upper() in ['USERID', 'USERNAME']:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Invalid SearchBy key; must specify UserId or UserName.')
 
-        dmaftServerDB.closeDB(dbConn)
-
-    #Parse the key components into a valid RSA key
-    try:
-        userPubKeyExp = int(clientRequest['UserPublicKeyExp'])
-        userPubKeyMod = int(clientRequest['UserPublicKeyMod'])
-    except:
-        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='The user public key exponent and modulus must be valid integers.')
-    
-    try:
-        numSet = rsa.RSAPublicNumbers(userPubKeyExp, userPubKeyMod)
-        pubKey = numSet.public_key()
-    except Exception as e:
-        print("Exception when trying to construct key:\n", e)
-        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Failed to construct the RSA public key from the given parameters.')
-
-    #Create the challenge and send it to the client
-    if clientRequest['UserId'] == '':
-        clientRequest['UserId'] == None #Sanitize blank ID before sending to query
-
-    pubKeyBytes = pubKey.public_bytes(encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo)
-    challengeBytes = random.randbytes(32)
-    dbConn = dmaftServerDB.startDB()
-    dmaftServerDB.pruneChallenges(connection=dbConn) #Prevent attackers from brute-forcing old challenges later on
-    result = dmaftServerDB.addChallenges(connection=dbConn, challenges=[challengeBytes], publicKeys=[pubKeyBytes], userIDs=[clientRequest['UserId']])
-    dbConn.close()
-
-    if type(result) is not list:
-        return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to produce an authentication challenge.')
-    
-    elif len(result) != 1:
-        return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to receive created challenge from server database.')
-
-    try:
-        challenge = result[0]
-        clientRequest['ChallengeId'] = str(challenge[0])
-        clientRequest['ChallengeData'] = base64.b64encode(challenge[1]).decode()
-        clientRequest['Successful'] = True
-        clientRequest['ServerTimestamp'] = time.time()
-        return clientRequest
-    except:
-        return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to parse challenge from server database response.')
-
-
-def handleChallengeResponse(clientRequest: dict):
-    keys = set(clientRequest.keys())
-    expectedKeys = {'Command','ChallengeId','Signature','HashAlgorithm','ClientTimestamp'}
-    if keys != expectedKeys:
-        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more required JSON keys are missing from the request.')
-
-    if str(clientRequest['HashAlgorithm']).upper() != 'SHA256':
-        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Only SHA256 signatures are currently supported.')
-
-    if clientRequest['ChallengeId'] == '' or clientRequest['Signature'] == '':
-        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Both the ChallengeId and Signature must be non-empty.')
-
-    print("Received authentication request!")
-    print(clientRequest)
-
-    #Find the challenge and retrieve the stored public key.
-    #Remember, the public key was serialized as DER and the format was SubjectPublicKeyInfo.
+    #Search the list of users and return the results.
     dbConn = dmaftServerDB.startDB()
     try:
-        challenges = dmaftServerDB.getChallenge(connection=dbConn, challengeID=clientRequest['ChallengeId'])
-    except Exception as e:
-        print("dmaftserverDB.getChallenges() failed.")
-        dbConn.close()
-        return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='dmaftServerDB.getChallenge() failed.')
-    
-    if type(challenges) is not list:
-        dbConn.close()
-        return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='Failed to query the server challenge database. Please try again.')
-
-    elif len(challenges) != 1:
-        dbConn.close()
-        return makeError(clientRequest=clientRequest, errorCode='InvalidChallengeId', reason='The specified challenge does not exist. Please request a new challenge.')
-
-    #We got exactly one match.
-    #Delete the challenge from the DB so it can't be used in a replay attack.
-    #Then, import the public key from the result in 'record' and verify the provided signature.
-    if not dmaftServerDB.deleteChallengesWithUUID(connection=dbConn, challengeID=clientRequest['ChallengeId']):
-        dbConn.close()
-        return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='')
-
-    record = challenges[0]
-    challengeId, challenge, publicKeyBytes, userId, expireTimestamp = record
-    userPublicKey = serialization.load_der_public_key(publicKeyBytes)
-    sigBytes = base64.b64decode(clientRequest['Signature'])
-    try:
-        #If this succeeds without an exception, the signature is valid.
-        userPublicKey.verify(
-            signature=sigBytes,
-            data=challenge,
-            padding=padding.PKCS1v15(),
-            algorithm=hashes.SHA256()
-            )
+        if clientRequest['SearchBy'].upper() == 'USERNAME':
+            results = dmaftServerDB.getUsersByName(connection=dbConn, userName=clientRequest['SearchTerm'])
+        else:
+            results = dmaftServerDB.getUserByID(connection=dbConn, userID=clientRequest['SearchTerm'])
     except:
-        #The challenge signature is invalid. Treat as if a wrong password was entered; deny access.
-        return makeError(clientRequest=clientRequest, errorCode='InvalidResponse', reason='The challenge signature could not be verified. Please request a new challenge.')
+        return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='Failed to execute the requested search. Please try again.')
+    finally:
+        dbConn.close()
 
-    #The client is now authenticated!
-    dbConn = dmaftServerDB.startDB()
-    if userId in [None,'']:
-        #The user doesn't exist yet. Register them.
-        newUserId = dmaftServerDB.registerUser(connection=dbConn, publicKey=userPublicKey)
-        if newUserId is None:
-            dmaftServerDB.closeDB(dbConn)
-            return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to register the new user record after successful authentication. Please request a new challenge.')
+    userlist = []
+    try:
+        for record in results:
+            userlist.append({'UserId':record[0], 'UserName':record[1]})
+    except:
+        pass
 
-        userId = newUserId
-        print("Successfully created a new userId!")
-
-    #Issue the user a token and construct a response
-    token = dmaftServerDB.createToken(connection=dbConn, userID=userId)
-    print("Created the token!")
-    if token is None:
-        #Token creation failed. Provide a fake token with the real user ID to the client. They can get a new token on their own using that info.
-        dmaftServerDB.closeDB(dbConn)
-        clientRequest['Successful'] = True
-        clientRequest['UserId'] = userId
-        clientRequest['TokenId'] = ''
-        clientRequest['TokenSecret'] = ''
-        return clientRequest
-    
-    #Token creation succeeded. Send it back for the client to use.
     clientRequest['Successful'] = True
-    clientRequest['UserId'] = token['UserId']
-    clientRequest['TokenId'] = token['TokenId']
-    clientRequest['TokenSecret'] = base64.b64encode(token['TokenSecret']).decode()
+    clientRequest['ServerTimestamp'] = int(time.time())
+    clientRequest['Results'] = userlist
     return clientRequest
 
 
-#Main dispatch function for all received requests
+def handleNewConvoRequest(clientRequest: dict):
+    keys = set(clientRequest.keys())
+    expectedKeys = {'Command','UserId','RecipientIds'}
+    if not expectedKeys.issubset(keys):
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more required JSON keys are missing from the request.')
+
+    sanityChecks = [
+        type(clientRequest['Command']) == str,
+        type(clientRequest['UserId']) == str,
+        type(clientRequest['RecipientIds']) == str,
+    ]
+
+    if False in sanityChecks:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One of the JSON keys is malformed or missing a required value.')
+
+    #Parse the recipient list and ensure that each recipient is a valid UserID.
+    #Remove all duplicates too.
+    recipients = json.loads(clientRequest['Recipients'])
+    if type(recipients) != list:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='The Recipient key must specify a list of UserID strings to add to the conversation.')
+
+    recipients = list(dict.fromkeys(recipients))
+    for i in len(recipients):
+        recipients[i] = str(recipients[i]).upper()
+    
+    sender = clientRequest['UserId'].upper()
+    if sender in recipients:
+        recipients.remove(sender)
+
+    #Check if we actually have any recipients.
+    #If not, stop.
+    if len(recipients) == 0:
+        return makeError(clientRequest=clientRequest, errorCode='NoRecipientsSpecified', reason='At least one User ID must be specified in the recipient list other than yours!')
+
+    #We have at least one recipient.
+    #Validate them all before continuing.
+    dbConn = dmaftServerDB.startDB()
+    try:
+        for recipient in recipients:
+            if not dmaftServerDB.doesUserExist(connection=dbConn, userID=recipient):
+                dmaftServerDB.closeDB(dbConn)
+                return makeError(clientRequest=clientRequest, errorCode='InvalidRecipientId', reason='Recipient ID ' + recipient + ' is not a registered user.')
+    except:
+        dmaftServerDB.closeDB(dbConn)
+        return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', retry=True, reason='Failed to validate the provided list of recipient IDs. Please try again.')
+
+    #The provided recipients are valid.
+    #Add the sender to the member list and create the conversation.
+    recipients.append(sender)
+    try:
+        conversationID = dmaftServerDB.createNewConversation(connection=dbConn, userIDs=recipients)
+        if conversationID is None:
+            dmaftServerDB.closeDB(dbConn)
+            return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', retry=True, reason='Failed to create the requested conversation. Please try again.')
+    except:
+        #The only error that this method will throw is a ValueError, and only if one of the recipients doesn't exist.
+        return makeError(clientRequest=clientRequest, errorCode='InvalidRecipientId', reason='The database detected that one of the provided User IDs is invalid.')
+
+    #The conversation was successfully created.
+    #Notify everyone.
+    newConversationData = {
+        'Command':'NEWCONVERSATIONCREATED',
+        'ServerTimestamp': time.time(),
+        'CreatorId':sender,
+        'Members':recipients,
+        'ConversationId':conversationID
+    }
+    newConversationMsg = json.dumps(newConversationData)
+    remainingUsers = connectedClients.broadcastToUsers(recipients, newConversationMsg)
+
+    #If any recipients missed the notification, store it in the mailbox to send to them later.
+    #Mark the conversation as SYSTEM so that we know it isn't a user-sent message.
+    if len(remainingUsers) > 0:
+        dbConn = dmaftServerDB.startDB()
+        for user in remainingUsers:
+            dmaftServerDB.addToMailbox(connection=dbConn, conversationID='SYSTEM', recipientID=user, msgDict=newConversationMsg, expireTime=(int(time.time()) + 1209600)) #Give it two weeks to send out
+
+    clientRequest['Successful'] = True
+    clientRequest['ServerTimestamp'] = int(time.time())
+    clientRequest['NewConversationId'] = conversationID
+    return clientRequest
+
+
+def handleSendMessageRequest(clientRequest: dict):
+    #Make sure we have a valid request
+    keys = set(clientRequest.keys())
+    expectedKeys = {'Command','ConversationId','MessageType','MessageData'}
+    if not expectedKeys.issubset(keys):
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more required JSON keys are missing from the request.')
+
+    sanityChecks = [
+        type(clientRequest['Command']) == str,
+        type(clientRequest['ConversationId']) == str,
+        type(clientRequest['MessageType']) == str,
+    ]
+
+    if False in sanityChecks:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One of the JSON keys is malformed or missing a required value.')
+
+    if clientRequest['MessageType'] not in ['Text', 'Image', 'Video', 'File']:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Invalid value given for MsgType. Must be one of: Text, Image, Video, File.')
+
+    #Validate the Conversation ID and get the list of recipients
+    dbConn = dmaftServerDB.startDB()
+    sqlResult = dmaftServerDB.getConversationByID(clientRequest['ConversationId'])
+    dmaftServerDB.closeDB(dbConn)
+
+    if sqlResult is None:
+        return makeError(clientRequest=clientRequest, errorCode='InvalidConversationId', reason='Invalid conversation ID provided in send message request.')
+
+    if len(sqlResult) > 1:
+        return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to validate the conversation ID.')
+
+    conversationID, participantJSON = sqlResult[0]
+    participants = json.loads(participantJSON)
+    if clientRequest['UserId'].upper() in participants:
+        participants.remove(clientRequest['UserId'])
+
+    #Construct and send the message notification
+    userMsgData = {
+        'Command':'INCOMINGMESSAGE',
+        'OriginalReceiptTimestamp':int(time.time()),
+        'SenderId':clientRequest['UserId'],
+        'ConversationId':clientRequest['ConversationId'],
+        'MessageType':clientRequest['MessageType'],
+        'MessageData':clientRequest['MessageData']
+    }
+
+    userMsgJSON = json.dumps(userMsgData)
+    remainingUsers = connectedClients.broadcastToUsers(participants, userMsgJSON)
+
+    #If any recipients missed the notification, store it in the mailbox to send to them later.
+    #Mark the conversation as SYSTEM so that we know it isn't a user-sent message.
+    if len(remainingUsers) > 0:
+        dbConn = dmaftServerDB.startDB()
+        for user in remainingUsers:
+            dmaftServerDB.addToMailbox(connection=dbConn, conversationID='SYSTEM', recipientID=user, msgDict=userMsgJSON, expireTime=(int(time.time()) + 604800)) #Give it one week to send out
+
+    clientRequest['Successful'] = True
+    clientRequest['ServerTimestamp'] = int(time.time())
+    return clientRequest
+
+
+#Update the requesting user's profile info at their request.
+#By design, users cannot update profile info for other users.
+def handleUpdateProfileRequest(clientRequest: dict):
+    #Validate the top-layer JSON.
+    keys = set(clientRequest.keys())
+    expectedKeys = {'Command','UserId','NewProfile'}
+    if not expectedKeys.issubset(keys):
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more required JSON keys are missing from the request.')
+
+    sanityChecks = [
+        type(clientRequest['Command']) == str,
+        type(clientRequest['UserId']) == str,
+        type(clientRequest['NewProfile']) == dict,
+    ]
+
+    if False in sanityChecks:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One of the JSON keys is malformed or missing a required value.')
+
+    #Now validate the NewProfile dictionary.
+    pkeys = set(clientRequest['NewProfile'].keys())
+    expectedPKeys = {'UserName','UserProfilePic','UserStatus','UserBio'}
+    if not expectedPKeys.issubset(pkeys):
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='The NewProfile key data is missing a required inner key.')
+
+    pSanityChecks = [
+        type(clientRequest['NewProfile']['UserName']) == str,
+        type(clientRequest['NewProfile']['UserProfilePic']) == str, #haven't decoded it from Base64 yet
+        type(clientRequest['NewProfile']['UserStatus']) == str,
+        type(clientRequest['NewProfile']['UserBio']) == str,
+    ]
+
+    if False in pSanityChecks:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more inner keys inside the NewProfile key are malformed or missing a value')
+
+    #Technically, we could decode the user's profile photo and then upload it to the DB.
+    #However, since we don't NEED to see the raw value server-side, might as well store it in B64 to make it easier for delivery.
+
+    dbConn = dmaftServerDB.startDB()
+    result = dmaftServerDB.updateUserProfileData(
+        connection=dbConn,
+        userID=clientRequest['UserId'],
+        userName=clientRequest['NewProfile']['UserName'],
+        userBio=clientRequest['NewProfile']['UserBio'],
+        userStatus=clientRequest['NewProfile']['UserStatus'],
+        userPic=clientRequest['NewProfile']['UserProfilePic'],
+        )
+    dmaftServerDB.closeDB(dbConn)
+
+    if not result:
+        return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason="Failed to update user profile data for user " + clientRequest['UserId'] + ". Please try again.")
+
+    del clientRequest['NewProfile']
+    clientRequest['Successful'] = True
+    clientRequest['ServerTimestamp'] = int(time.time())
+
+    return clientRequest
+
+535
+#Main dispatch function for all received requests.
+#These first few do NOT require valid tokens.
 def handleRequest(clientRequest):
     command = str(clientRequest['Command']).upper()
     if command == 'PING':
@@ -212,13 +300,23 @@ def handleRequest(clientRequest):
     #"CONNECT" is reserved for one client wanting to connect to another client.
     elif command == 'CONNECT':
         print("Detected CONNECT request.")
-        return handleConnectRequest(clientRequest)
+        return handleAuth.handleConnectRequest(clientRequest)
     
     elif command == 'AUTHENTICATE':
         print("Detected AUTHENTICATE request.")
-        return handleChallengeResponse(clientRequest)
+        return handleAuth.handleChallengeResponse(clientRequest)
 
     else:
+        #Validate the client's token.
+        clientRequest = handleAuth.validateClientToken(clientRequest)
+        if clientRequest.get('Successful', 'HelloThere') == False:
+            return clientRequest    #Audit this line later on. validateClientToken is supposed to return an error dictionary if it fails, that we can just directly send. However, an attacker could just purposely set Successful == False in their clientRequest.
+        
+        #Client's token is validated. Allow remaining access.
+        if command == 'SEARCHUSERS':
+            print("Detected SEARCHUSERS request.")
+            
+
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Invalid command received from client.')
 
 
@@ -229,8 +327,8 @@ async def listen(websocket: websockets.asyncio.server.ServerConnection):
         i = 0
         print("Running the listen function now!")
         async for message in websocket:
-            if (getClientFromSocket(websocket.id) == []):
-                connectedClients.append({'UserId':None,'SocketId':websocket.id})
+            if (connectedClients.getClientFromSocket(websocket) == []):
+                connectedClients.addSocket(websocket)
 
             i += 1
             print('Count:', i)
@@ -247,16 +345,6 @@ async def listen(websocket: websockets.asyncio.server.ServerConnection):
                 print("Sending to client:", serverReply)
                 await websocket.send(json.dumps(serverReply))
                 print("Successfully processed request.\n")
-                print(websocket.close_code)
-
-                #REMOVE CODE BELOW AFTER TESTING
-                if i >= 2:
-                    print('Waiting 30 seconds to send the bad packet...')
-                    time.sleep(10)
-                    print("Sending!")
-                    print(websocket.close_code)
-                    await websocket.send(json.dumps(makeError(clientRequest=None, errorCode='None', reason='This is a test message on a broken socket to see what happens.')))
-                    print("Tried to send the message!")
 
             except Exception as e:
                 print("ERROR: handleRequest threw an exception.")
@@ -268,17 +356,18 @@ async def listen(websocket: websockets.asyncio.server.ServerConnection):
 
     except websockets.exceptions.ConnectionClosed as closed:
         print("Client disconnected:", closed)
-        deleteSocket(websocket)
+        connectedClients.deleteSocket(websocket)
         print("Removed this websocket from the list of active clients.")
 
     except Exception as e:
         print('Exception raised when trying to send message:', websocket, e)
-        deleteSocket(websocket)
+        connectedClients.deleteSocket(websocket)
         print("Removed this websocket from the list of active clients.")
 
 
 async def main():
-    async with websockets.asyncio.server.serve(listen, "localhost", 8765, ssl=ssl_context) as server:
+    ip = getIPAddress()
+    async with websockets.asyncio.server.serve(listen, ip, 8765, ssl=ssl_context) as server:
         print(type(server))
         print("Started server websocket, listening...")
         await server.serve_forever()
@@ -297,6 +386,27 @@ def makeError(*, clientRequest: dict, retry: bool = False, errorCode, reason: st
     except:
         pass
     return json.dumps(jsonMsg)
+
+#Strips out the UserId and token info from a given clientRequest.
+def cleanAuthData(clientRequest: dict):
+    for item in ['TokenId', 'TokenSecret']:
+        try:
+            del clientRequest[item]
+        except:
+            pass
+        return clientRequest
+    
+def getIPAddress():
+    tempSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    tempSocket.settimeout(0)
+    try:
+        tempSocket.connect(('8.8.8.8', 1))
+        ip = tempSocket.getsockname()[0]
+    except:
+        ip = '127.0.0.1'
+    finally:
+        tempSocket.close()
+    return ip
 
 def makeBadAuthError(*, clientRequest: dict):
     return makeError(clientRequest=clientRequest, errorCode='InvalidToken', reason='The required token for this operation is missing or invalid. Please request a new challenge.')

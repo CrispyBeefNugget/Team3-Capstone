@@ -285,10 +285,10 @@ def registerUser(*, connection: sqlite3.Connection, publicKey: rsa.RSAPublicKey)
 
 #Searches the database by UserID.
 #Returns a list of results if successful and None if failed.
-def getUserByID(*, connection: sqlite3.Connection, userID: str):
+def searchUserByID(*, connection: sqlite3.Connection, userID: str):
     try:
         with connection:
-            stmt = 'SELECT * FROM tblRegisteredUsers WHERE UserID = ?;'
+            stmt = 'SELECT UserID, UserName FROM tblRegisteredUsers WHERE UserID = ?;'
             cursor = connection.execute(stmt, [userID])
             results = cursor.fetchall()
             return results
@@ -298,16 +298,49 @@ def getUserByID(*, connection: sqlite3.Connection, userID: str):
     
 #Searches the database by UserName.
 #Returns a list of results if successful and None if failed.
-def getUsersByName(*, connection: sqlite3.Connection, userName: str):
+def searchUsersByName(*, connection: sqlite3.Connection, userName: str):
     try:
         with connection:
-            stmt = 'SELECT * FROM tblRegisteredUsers WHERE UserName = ?;'
+            stmt = 'SELECT UserID, UserName FROM tblRegisteredUsers WHERE UserName LIKE ?;'
             cursor = connection.execute(stmt, [userName])
             results = cursor.fetchall()
             return results
     except Exception as e:
         print("Unable to query the registered users table: ", e)
         return None
+    
+#Updates a user's profile data.
+#Returns True if successful and False if not.
+#It is expected that the server will only call this method on behalf
+#of authenticated users, to update their OWN profiles.
+def updateUserProfileData(
+        *, 
+        connection: sqlite3.Connection, 
+        userID: str, 
+        userName: str, 
+        userBio: str, 
+        userStatus: str, 
+        userPic: bytes
+        ):
+    
+    #Verify that the userID is legitimate.
+    try:
+        if not doesUserExist(connection=connection, userID=userID):
+            print("dmaftServerDB.updateUserProfileData(): User", userID, "is not registered! Aborting.")
+            return False
+    except:
+        return False
+    
+    #Update the requested data.
+    try:
+        with connection:
+            updateProfileStmt = 'UPDATE tblRegisteredUsers SET UserName = ?, Status = ?, Bio = ?, ProfilePic = ? WHERE UserID = ?;'
+            connection.execute(updateProfileStmt, (userName, userStatus, userBio, userPic, userID))
+            connection.commit()
+            return True
+    except:
+        print("dmaftServerDB.updateUserProfileData(): Failed to update the profile info for user", userID)
+        return False
 
 #Deletes any expired tokens.
 #Should run this method BEFORE verifying a token.
@@ -528,6 +561,7 @@ def doesConversationExist(*, connection: sqlite3.Connection, conversationID: str
 #Returns True if successful and False if not.
 #Raises a ValueError if the specified ExpireTime exists in the past,
 #or if the specified recipient isn't a registered user.
+#NOTE: For system messages (new conversation created, etc.) specify a conversationID of SYSTEM.
 def addToMailbox(*, connection: sqlite3.Connection, conversationID: str, expireTime: int, recipientID: str, msgDict: dict):
     #Make sure the expire time is valid.
     currentTime = int(time.time())
@@ -535,20 +569,22 @@ def addToMailbox(*, connection: sqlite3.Connection, conversationID: str, expireT
         raise ValueError("The expire time must be later than the current time!")
     
     #Make sure that we have a valid conversation.
-    if not doesConversationExist(connection=connection, conversationID=conversationID):
-        raise ValueError("The provided conversation ID doesn't exist!")
+    #Individual SYSTEM messages are excluded from this check.
+    if conversationID.upper() != 'SYSTEM':
+        if not doesConversationExist(connection=connection, conversationID=conversationID):
+            raise ValueError("The provided conversation ID doesn't exist!")
     
-    #Make sure the specified recipient is a member of this conversation
-    conversations = getConversationByID(connection=connection, conversationID=conversationID)
-    if len(conversations) != 1:
-        raise RuntimeError("dmaftServerDB.addToMailbox(): " + str(len(conversations)) + " were found for conversation ID " + conversationID + "! Database corruption has likely occurred.")
-    
-    convoRecord = conversations[0]
-    userlist = json.loads(convoRecord[1])
-    for user in userlist:
-        user = user.upper()
-    if recipientID.upper() not in userlist:
-        raise ValueError("dmaftServerDB.addToMailbox(): The specified recipient user ID", recipientID, "is not a member of conversation", conversationID,"!")
+        #Make sure the specified recipient is a member of this conversation
+        conversations = getConversationByID(connection=connection, conversationID=conversationID)
+        if len(conversations) != 1:
+            raise RuntimeError("dmaftServerDB.addToMailbox(): " + str(len(conversations)) + " were found for conversation ID " + conversationID + "! Database corruption has likely occurred.")
+
+        convoRecord = conversations[0]
+        userlist = json.loads(convoRecord[1])
+        for user in userlist:
+            user = user.upper()
+        if recipientID.upper() not in userlist:
+            raise ValueError("dmaftServerDB.addToMailbox(): The specified recipient user ID", recipientID, "is not a member of conversation", conversationID,"!")
 
     msgData = json.dumps(msgDict)
 
