@@ -1,6 +1,8 @@
 import 'package:dmaft/chat_test_list.dart';
 import 'package:flutter/material.dart';
 
+import 'package:dmaft/client_db.dart';
+
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
 
@@ -12,27 +14,48 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   final TextEditingController _searchController = TextEditingController();
 
-  List<String> testList = ChatTestList.getList();
+  final ClientDB database_service = ClientDB.instance;
 
-  List<String> _filteredList = [];
+  List<Conversation> chat_list = [];
+  List<Conversation> _filteredList = [];
+  late List<bool> _selected;
+
+  // List<String> testList = ChatTestList.getList();
 
   bool isSearchingMode = false;
   bool isSelectionMode = false;
-  late List<bool> _selected;
   bool _selectAll = false;
 
   @override
   void initState() {
-    super.initState();
-    initializeSelection();
-    _filteredList = testList;
+    get_chat_info().then((response) {
+      setState(() {
+        chat_list = response;
+      });
+      initializeSelection();
+      _filteredList = chat_list;
+    });
     _searchController.addListener(_performSearch);
+    super.initState();
   }
 
+  Future<List<Conversation>> get_chat_info() async {
+    var db_conversations = await database_service.getAllConvos();
+    return db_conversations;
+  }
+
+  // String get_name_from_id(String ) {
+
+  // }
+
   void initializeSelection() {
-    //testList.sort();
-    //testList.add('Test Test');
-    _selected = List<bool>.generate(testList.length, (_) => false);
+    _selected = List<bool>.generate(chat_list.length, (_) => false);
+  }
+
+  void _toggle(int index) {
+    setState(() {
+      _selected[index] = !_selected[index];
+    });
   }
 
   @override
@@ -48,17 +71,16 @@ class _ChatsScreenState extends State<ChatsScreen> {
       }
       if (_searchController.text != '') {
         isSearchingMode = true;
-        _filteredList = testList
-          .where((element) => element
+        _filteredList = chat_list
+          .where((element) => element.convoMembers[1]
             .toLowerCase()
-            .startsWith(_searchController.text.toLowerCase()))
+            .contains(_searchController.text.toLowerCase()))
           .toList();
       }
       else {
         isSearchingMode = false;
-        _filteredList = testList;
+        _filteredList = chat_list;
       }
-      testList = ChatTestList.getList(); // Doesn't update in real-time. Have to change tabs to update.
     });
   }
 
@@ -99,152 +121,173 @@ class _ChatsScreenState extends State<ChatsScreen> {
         ],
       ),
 
-      body: Scaffold(
-        appBar: AppBar(
-          leading: 
-            isSelectionMode
-              ? IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () {
-                    setState(() {
-                      isSelectionMode = false;
-                    });
-                    initializeSelection();
-                  },
-              )
-              : const SizedBox(),
-          actions: <Widget>[
-            if (isSelectionMode)
-              IconButton(
-                onPressed: () {
-                  for (int i = 0; i < testList.length; i++) {
-                    if (_selected[i] == true) {
-                      testList[i] = '';
-                    }
-                  }
-                  testList.removeWhere((String chat) => chat == '');
-                  isSelectionMode = false; // Need to implement list refreshing and properly close out of selection mode.
-                },
-                icon: Icon(Icons.delete)
-              ),
-              TextButton(
-                child:
-                  !_selectAll
-                    ? const Text('select all', style: TextStyle(color: Colors.black))
-                    : const Text('unselect all', style: TextStyle(color: Colors.black)),
-                onPressed: () {
-                  _selectAll = !_selectAll;
-                  setState(() {
-                    _selected = List<bool>.generate(testList.length, (_) => _selectAll);
-                  });
-                },
-              ),
-          ],
-          toolbarHeight:
-            isSelectionMode ? 50 : 0,
-        ),
+      body: FutureBuilder(
+        future: get_chat_info(),
+        builder: (BuildContext context, AsyncSnapshot snapshot) {
+          if (snapshot.hasData) {
 
-        body:
-          isSearchingMode
-          ? ListView.builder(
-            itemCount: _filteredList.length,
-            itemBuilder: (context, index) => ListTile(
-              leading: Icon(Icons.person),
-              title: Text(
-                _filteredList[index],
-                style: const TextStyle(color: Colors.black),
+            return Scaffold(
+              appBar: AppBar(
+                leading: 
+                  isSelectionMode
+                    ? IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() {
+                            isSelectionMode = false;
+                          });
+                          initializeSelection();
+                        },
+                    )
+                    : const SizedBox(),
+                actions: <Widget>[
+                  if (isSelectionMode)
+                    IconButton(
+                      onPressed: () {
+                        // for (int i = 0; i < testList.length; i++) {
+                        //   if (_selected[i] == true) {
+                        //     testList[i] = '';
+                        //   }
+                        // }
+                        // testList.removeWhere((String chat) => chat == '');
+                        // isSelectionMode = false; // Need to implement list refreshing and properly close out of selection mode.
+                        // Insert delete function here.
+                      },
+                      icon: Icon(Icons.delete)
+                    ),
+                    TextButton(
+                      child:
+                        !_selectAll
+                          ? const Text('select all', style: TextStyle(color: Colors.black))
+                          : const Text('unselect all', style: TextStyle(color: Colors.black)),
+                      onPressed: () {
+                        _selectAll = !_selectAll;
+                        setState(() {
+                          _selected = List<bool>.generate(chat_list.length, (_) => _selectAll);
+                        });
+                      },
+                    ),
+                ],
+                toolbarHeight:
+                  isSelectionMode ? 50 : 0,
               ),
-              onTap: () => {
-                if (isSelectionMode) {
 
-                }
-              },
-              trailing:
-                isSelectionMode
-                  ? Checkbox(
-                    value: _selected[index],
-                    onChanged: (bool? x) => {
-                      setState(() {
-                        _selected[index] = !_selected[index];
-                      })
+              body:
+                isSearchingMode
+                ? ListView.builder(
+                  itemCount: _filteredList.length,
+                  itemBuilder: (context, index) => ListTile(
+                    leading: Icon(Icons.person),
+                    title: Text(
+                      _filteredList[index].convoMembers[1],
+                      style: const TextStyle(color: Colors.black),
+                    ),
+                    onTap: () => {
+                      
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => Scaffold(
+                          appBar: AppBar(
+                            title: Text(_filteredList[index].convoMembers[1]),
+                            centerTitle: true,
+                            backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
+                            foregroundColor: Colors.white,
+                          ),
+                          body: Column(
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.all(10.0)
+                              ),
+                              Center(
+                                child: Text(_filteredList[index].lastModified),
+                              )
+                            ],
+                          )
+                        ))
+                      )
+                      
+
                     },
-                  )
-                  : const SizedBox.shrink(),
-            ),
-          )
-          : ListBuilder(
-            contactList: testList,
-            isSelectionMode: isSelectionMode,
-            selectedList: _selected,
-            onSelectionChange: (bool x) {
-              setState(() {
-                isSelectionMode = x;
-              });
-            },
-          ),
-      ),
-    );
-  }
-}
+                    trailing:
+                      isSelectionMode
+                        ? Checkbox(
+                          value: _selected[index],
+                          onChanged: (bool? x) => {
+                            setState(() {
+                              _selected[index] = !_selected[index];
+                            })
+                          },
+                        )
+                        : const SizedBox.shrink(),
+                  ),
+                )
 
-// Future<Widget> refreshChats() async {
-//   await Future.delayed(const Duration(seconds: 5));
-//   return List
-// }
+                : ListView.builder(
+                  itemCount: _selected.length,
+                  itemBuilder: (context, index) => ListTile(
+                    leading: Icon(Icons.person),
+                    onTap: () => {
+                      if (isSelectionMode) {
+                        _toggle(index)
+                      }
+                      else {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => Scaffold(
+                            appBar: AppBar(
+                              title: Text(chat_list[index].convoMembers[1]),
+                              centerTitle: true,
+                              backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
+                              foregroundColor: Colors.white,
+                            ),
+                            body: Column(
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.all(10.0)
+                                ),
+                                Center(
+                                  child: Text(chat_list[index].lastModified),
+                                )
+                              ],
+                            )
+                          ))
+                        )
+                      }
+                    },
 
-class ListBuilder extends StatefulWidget {
-  const ListBuilder({
-    super.key,
-    required this.contactList,
-    required this.selectedList,
-    required this.isSelectionMode,
-    required this.onSelectionChange,
-  });
+                    onLongPress: () {
+                      if (!isSelectionMode) {
+                        setState(() {
+                          _selected[index] = true;
+                        });
+                        isSelectionMode = true;
+                      }
+                    },
+                    trailing: 
+                      isSelectionMode
+                        ? Checkbox(
+                          value: _selected[index],
+                          onChanged: (bool? x) => _toggle(index),
+                        )
+                        : SizedBox.shrink(),
+                    title: Text(chat_list[index].convoMembers[1])
+                  ),
+                )
 
-  final List<String> contactList;
-  final bool isSelectionMode;
-  final List<bool> selectedList;
-  final ValueChanged<bool>? onSelectionChange;
 
-  @override
-  State<ListBuilder> createState() => _ListBuilderState();
-}
+            );
 
-class _ListBuilderState extends State<ListBuilder> {
-  void _toggle(int index) {
-    if (widget.isSelectionMode) {
-      setState(() {
-        widget.selectedList[index] = !widget.selectedList[index];
-      });
-    }
-  }
+          }
+          else {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }
 
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: widget.selectedList.length,
-      itemBuilder: (_, int index) {
-        return ListTile(
-          leading: Icon(Icons.person),
-          onTap: () => _toggle(index),
-          onLongPress: () {
-            if (!widget.isSelectionMode) {
-              setState(() {
-                widget.selectedList[index] = true;
-              });
-              widget.onSelectionChange!(true);
-            }
-          },
-          trailing:
-            widget.isSelectionMode
-              ? Checkbox(
-                value: widget.selectedList[index],
-                onChanged: (bool? x) => _toggle(index),
-              )
-              : const SizedBox.shrink(),
-          title: Text(widget.contactList[index]),
-        );
-      },
+
+        },
+      )
+      
+      
+      
     );
   }
 }

@@ -45,8 +45,28 @@ class _ContactsScreenState extends State<ContactsScreen> {
     return db_contacts;
   }
 
+  Future<void> delete_contact(Contact contact) async {
+    await database_service.delContact(contact);
+  }
+
+  void refresh_contacts() {
+    get_contact_info().then((response) { // Initializes the lists used for displaying and filtering (searching) contacts.
+      setState(() {
+        contact_list = response;
+      });
+      initializeSelection();
+      _filteredList = contact_list;
+    });
+  }
+
   void initializeSelection() {
     _selected = List<bool>.generate(contact_list.length, (_) => false);
+  }
+
+  void _toggle(int index) {
+    setState(() {
+      _selected[index] = !_selected[index];
+    });
   }
 
   @override
@@ -134,8 +154,17 @@ class _ContactsScreenState extends State<ContactsScreen> {
                         if (isSelectionMode)
                           IconButton(
                             onPressed: () {
-                              // Insert delete function here
-                              print(_selected);
+                              
+                              for (int i = 0; i < contact_list.length; i++) {
+                                if (_selected[i] == true) {
+                                  delete_contact(contact_list[i]);
+                                }
+                              }
+                              refresh_contacts();
+                              setState(() {
+                                isSelectionMode = false;
+                                initializeSelection();
+                              });
 
                             },
                             icon: Icon(Icons.delete)
@@ -159,7 +188,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
               body:
                 isSearchingMode
                 ? ListView.builder(
-                  itemCount: _filteredList!.length,
+                  itemCount: _filteredList.length,
                   itemBuilder: (context, index) => ListTile(
                     leading: Icon(Icons.person),
                     title: Text(
@@ -175,7 +204,25 @@ class _ContactsScreenState extends State<ContactsScreen> {
                             centerTitle: true,
                             backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                             foregroundColor: Colors.white,
-                          ),
+                            actions: [
+                              IconButton(
+                                onPressed: () {
+                                  delete_contact(_filteredList[index]);
+                                  refresh_contacts();
+                                  Navigator.pop(context);
+                                  _searchController.text = '';
+                                },
+                                icon: Icon(Icons.delete),
+                              ),
+                              IconButton(
+                                onPressed: () {
+
+                                },
+                                icon: Icon(Icons.block),
+
+                              )
+                            ],
+                        ),
                           body: Column( // Left off here 
                             children: [
                               Padding(
@@ -231,16 +278,106 @@ class _ContactsScreenState extends State<ContactsScreen> {
                         : const SizedBox.shrink(),
                   ),
                 )
-                : ListBuilder(
-                  UIcontactList: contact_list,
-                  isSelectionMode: isSelectionMode,
-                  selectedList: _selected,
-                  onSelectionChange: (bool x) {
-                    setState(() {
-                      isSelectionMode = x;
-                    });
-                  },
-                ),
+
+                : ListView.builder(
+                  itemCount: _selected.length,
+                  itemBuilder: (context, index) => ListTile(
+                    leading: Icon(Icons.person),
+                    onTap: () => {
+                      if (isSelectionMode) {
+                        _toggle(index)
+                      }
+                      else {
+                        Navigator.of(context).push(
+
+                          MaterialPageRoute(builder: (context) => Scaffold(
+                            appBar: AppBar(
+                              title: Text('Details'),
+                              centerTitle: true,
+                              backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
+                              foregroundColor: Colors.white,
+                              actions: [
+                                IconButton(
+                                  onPressed: () {
+                                    delete_contact(contact_list[index]);
+                                    refresh_contacts();
+                                    Navigator.pop(context);
+                                  },
+                                  icon: Icon(Icons.delete),
+                                ),
+                                IconButton(
+                                  onPressed: () {
+
+                                  },
+                                  icon: Icon(Icons.block),
+
+                                )
+                              ],
+                            ),
+                            body: Column( // Left off here 
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.all(10.0),
+                                ),
+                                Center(
+                                  child: CircleAvatar(
+                                    backgroundImage: Image.memory(contact_list[index].pic).image,
+                                    radius: 100,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.all(10.0),
+                                ),
+
+                                ListTile(
+                                  title: Text(contact_list[index].name),
+                                  titleAlignment: ListTileTitleAlignment.center,
+                                ),
+                                ListTile(
+                                  title: Text(contact_list[index].pronouns),
+                                  titleAlignment: ListTileTitleAlignment.center,
+                                ),
+                                ListTile(
+                                  title: Text(contact_list[index].bio),
+                                  titleAlignment: ListTileTitleAlignment.center,
+                                ),
+                                ListTile(
+                                  title: Text(contact_list[index].lastModified),
+                                  titleAlignment: ListTileTitleAlignment.center,
+                                ),
+
+                              ],
+                            )
+                          ))
+
+                        )
+                      }
+                    },
+
+                    onLongPress: () {
+                      if (!isSelectionMode) {
+                        setState(() {
+                          _selected[index] = true;
+                        });
+                        isSelectionMode = true;
+                      }
+                    },
+                    trailing: 
+                      isSelectionMode
+                        ? Checkbox(
+                          value: _selected[index],
+                          onChanged: (bool? x) => _toggle(index),
+                        )
+                        : SizedBox.shrink(),
+                    title: Text(contact_list[index].name),
+
+                  ),
+                )
+
+
+
+
+
             );
           }
           else {
@@ -252,113 +389,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
       )
       
       
-    );
-  }
-}
-
-class ListBuilder extends StatefulWidget {
-  const ListBuilder({
-    super.key,
-    required this.UIcontactList,
-    required this.selectedList,
-    required this.isSelectionMode,
-    required this.onSelectionChange,
-  });
-
-  final List<Contact> UIcontactList;
-  final bool isSelectionMode;
-  final List<bool> selectedList;
-  final ValueChanged<bool>? onSelectionChange;
-
-  @override
-  State<ListBuilder> createState() => _ListBuilderState();
-}
-
-class _ListBuilderState extends State<ListBuilder> {
-  void _toggle(int index) {
-    setState(() {
-      widget.selectedList[index] = !widget.selectedList[index];
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: widget.selectedList.length,
-      itemBuilder: (_, int index) {
-        return ListTile(
-          leading: Icon(Icons.person),
-          onTap: () => {
-            if (widget.isSelectionMode) {
-              _toggle(index)
-            }
-            else {
-              Navigator.of(context).push(
-
-                MaterialPageRoute(builder: (context) => Scaffold(
-                  appBar: AppBar(
-                    title: Text('Details'),
-                    centerTitle: true,
-                    backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
-                    foregroundColor: Colors.white,
-                  ),
-                  body: Column( // Left off here 
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.all(10.0),
-                      ),
-                      Center(
-                        child: CircleAvatar(
-                          backgroundImage: Image.memory(widget.UIcontactList[index].pic).image,
-                          radius: 100,
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.all(10.0),
-                      ),
-
-                      ListTile(
-                        title: Text(widget.UIcontactList[index].name),
-                        titleAlignment: ListTileTitleAlignment.center,
-                      ),
-                      ListTile(
-                        title: Text(widget.UIcontactList[index].pronouns),
-                        titleAlignment: ListTileTitleAlignment.center,
-                      ),
-                      ListTile(
-                        title: Text(widget.UIcontactList[index].bio),
-                        titleAlignment: ListTileTitleAlignment.center,
-                      ),
-                      ListTile(
-                        title: Text(widget.UIcontactList[index].lastModified),
-                        titleAlignment: ListTileTitleAlignment.center,
-                      ),
-
-                    ],
-                  )
-                ))
-
-              )
-            }
-          },
-          onLongPress: () {
-            if (!widget.isSelectionMode) {
-              setState(() {
-                widget.selectedList[index] = true;
-              });
-              widget.onSelectionChange!(true);
-            }
-          },
-          trailing:
-            widget.isSelectionMode
-              ? Checkbox(
-                value: widget.selectedList[index],
-                onChanged: (bool? x) => _toggle(index),
-              )
-              : const SizedBox.shrink(),
-          title: Text(widget.UIcontactList[index].name),
-        );
-      },
     );
   }
 }
