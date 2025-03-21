@@ -437,13 +437,12 @@ class ClientDB{
     FROM $_conversationTableName
     WHERE $_convoIDName = ?
     """, [targetConvoID]);
-  
     //If there are no rows for the conversation, throw an exception
     if(data == null){
       throw NoRowsException("There are no entries in the table for conversation $targetConvoID");
     }
-    //Transform database data into a list of Conversation objects
-    Conversation convo = data
+    //Transform database data into a Conversation object.
+    List<Conversation> convo = data
       .map(
         (e) => Conversation( //Map database data into Conversation class fields. Splits convo members around commas to reform a list.
           convoID: targetConvoID,
@@ -451,7 +450,7 @@ class ClientDB{
           lastModified: e[_convoLastModifiedName],
         )
       ).toList().cast<Conversation>(); //Cast dynamic type data to Conversation type.
-    return convo;
+    return convo[0];
   }
 
 
@@ -529,6 +528,50 @@ class ClientDB{
     DROP TABLE "${convo.convoID}"
     """
     );
+  }
+
+
+
+  //Method: getConvoMembers.
+  //Parameters: ConvoID of the conversation you would like the members from.
+  //Returns: A list of Contact objects for all conversation members EXCEPT for the client user.
+  //Example Usage: "clientdb1.getConvoMembers(<a_ConvoID>);".
+  //Description: When given a ConvoID, fetches the conversation using the convoID, then uses the convoMembers field of the Conversation to retrieve Contact 
+  //  userIDs. The method then fetches and returns Contact objects using these userIDs and stores them in a list. Because the client user's information is not
+  //  stored in the Contacts table, it will not be retrieved despite the user's own userID being in convoMembers.
+  Future<List<Contact>> getConvoMembers(String targetconvoid) async{
+    //Fetch the Conversation object using the given convoID.
+    Conversation convo = await getConvo(targetconvoid);
+    //Build a query based on the convoMembers.
+    String query = "SELECT * FROM $_contactsTableName WHERE";
+    bool firstFlag = true;
+    for(int i = 0; i < convo.convoMembers.length; i++){
+      //On all passes except the first, add an OR
+      if(!firstFlag){
+        query = "$query OR";
+      }
+      firstFlag = false;
+      //Add a search for the convoMember's id.
+      query = "$query $_contactsIDName = ${convo.convoMembers[i]}";
+    }
+    //Fetch the Contacts using the constructed query.
+    final db = await database;
+    dynamic data;
+    data = await db.rawQuery(query);
+    //Cast fetched data into a Contact object.
+    List<Contact> contacts = data
+    .map(
+      (e) => Contact( //Map database data into Contact class fields.
+        id: e[_contactsIDName] as String, 
+        name: e[_contactsNameName] as String,
+        pronouns: e[_contactsPronounsName] as String,
+        bio: e[_contactsBioName] as String,  
+        pic: e[_contactsPictureName] as Uint8List,
+        lastModified: e[_contactsLastModifiedName] as String,
+      )
+    ).toList().cast<Contact>(); //Cast dynamic type data to Contact type.
+    //Return the list of Contacts.
+    return contacts;
   }
 
 
