@@ -3,6 +3,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 
 
@@ -20,10 +21,6 @@ class NotFoundException implements Exception{
 
 
 
-
-
-
-
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 //File access helper class
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -34,6 +31,8 @@ class FileAccess {
   //Singleton pattern to ensure only one instance of FileAccess may exist at once.
   static final FileAccess instance = FileAccess._constructor();
   FileAccess._constructor();  
+
+//Example code for FileAccess instance creation: "final filehelper1 = FileAccess.instance;".
   
 
 
@@ -189,18 +188,98 @@ class FileAccess {
   //Description: Fetches each of the RSAKey Strings currently stored in flutter secure storage and returns them as a list of Strings. The list of keys is 
   //  ordered exactly as the list of keys given to setRSAKeys was. Throws an exception if there are no RSAKey values in storage or if there are fewer
   //  keys in storage than there are names in the "keynames" list at the start of the "Secure communication data storage" section.
-  Future<List<String>> getRSAKeys() async {
+  Future<Map<String, String>> getRSAKeys() async {
     //Access flutter secure storage.
     final storage = FlutterSecureStorage();
     //Read and return the RSA keys currently in flutter secure storage and throw an error if there is no value present.
-    List<String> keys =[];
+    Map<String, String> keys ={};
     for(int i = 0; i < keynames.length; i++){
       String ?key = await storage.read(key: keynames[i]);
       if(key == null){
         throw NotFoundException("Not enough RSA keys in storage!");
       }
-      keys.add(key);
+      keys[keynames[i]] = key; //Load RSA keys from storage into a map. Uses the keynames list for keys.
     }
     return keys;
+  }
+
+
+
+  //Method: setTokenID.
+  //Parameters: New TokenID in String format to replace the currently stored TokenID.
+  //Returns: Nothing.
+  //Example Usage: "await filehelper1.setTokenID(<a_String>);".
+  //Description: Overwrites the contents of the TokenID field in flutter secure storage with the given String. Stored persistently.
+  Future<void> setTokenID(String newID) async{
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Store the new TokenID in flutter secure storage.
+    await storage.write(key: "TokenID", value: newID, iOptions: options);
+  }
+
+
+
+  //Method: getTokenID.
+  //Parameters: None.
+  //Returns: The currently-stored TokenID in String format.
+  //Example Usage: "String tokenid1 = await filehelper1.getTokenID();".
+  //Description: Fetches the TokenID value currently stored in flutter secure storage and returns it as a String. Throws an exception if there is no TokenID 
+  //  value in storage.
+  Future<String> getTokenID() async {
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Read and return the TokenID currently in flutter secure storage and throw an error if there is no value present.
+    String ?tokenid = await storage.read(key: "TokenID");
+    if(tokenid == null){
+      throw NotFoundException("No TokenID exists in storage!");
+    }
+    return tokenid;
+  }
+
+
+
+  //Method: setTokenSecret.
+  //Parameters: New TokenSecret in Uint8List format to replace the currently stored TokenSecret.
+  //Returns: Nothing.
+  //Example Usage: "await filehelper1.setTokenSecret(<a_Uint8List_object>);".
+  //Description: Overwrites the contents of the TokenSecret field in flutter secure storage with the given bytes. Stored persistently.
+  Future<void> setTokenSecret(Uint8List newToken) async{
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Store the new TokenSecret in flutter secure storage as a String.
+    await storage.write(key: "TokenSecret", value: utf8.decode(newToken), iOptions: options);
+  }
+
+
+
+  //Method: getTokenSecret.
+  //Parameters: None.
+  //Returns: The currently-stored TokenSecret in Uint8List format.
+  //Example Usage: "Uint8List tokensec1 = await filehelper1.getTokenSecret();".
+  //Description: Fetches the TokenSecret value currently stored in flutter secure storage and returns it as a Uint8List object. Throws an exception if there is
+  //  no TokenSecret value in storage.
+  Future<Uint8List> getTokenSecret() async {
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Read and return the TokenSecret currently in flutter secure storage and throw an error if there is no value present.
+    String ?tokensec = await storage.read(key: "TokenSecret");
+    if(tokensec == null){
+      throw NotFoundException("No TokenID exists in storage!");
+    }
+    return utf8.encode(tokensec); //Converted from String to Uint8List and returned.
+  }
+
+
+
+  //Method: delTokenSecret.
+  //Parameters: None.
+  //Returns: Nothing.
+  //Example Usage: "await filehelper1.delTokenSecret();".
+  //Description: Deletes the currently-stored token secret from flutter secure storage.
+  Future<void> delTokenSecret() async{
+    //Access flutter secure storage.
+    final storage = FlutterSecureStorage();
+    //Store the new TokenSecret in flutter secure storage as a String.
+    await storage.write(key: "TokenSecret", value: utf8.decode(newToken), iOptions: options);
   }
 }

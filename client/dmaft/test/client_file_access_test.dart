@@ -1,5 +1,6 @@
 import 'package:dmaft/client_file_access.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
 
 void main () async{
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,19 +27,15 @@ void main () async{
   print(await filehelper.getUUID());
 
   print("RSAKeys:");
-  //await filehelper.setRSAKeys(["testkey1", "testkey2", "testkey3", "testkey4", "testkey5"]);
+  await filehelper.setRSAKeys(["testkey1", "testkey2", "testkey3", "testkey4", "testkey5"]);
   print(await filehelper.getRSAKeys());
-/*
-  print("UUID:");
-  //await filehelper.setUUID("testUUID1");
-  print(await filehelper.getUUID());
 
-  print("UUID:");
-  //await filehelper.setUUID("testUUID1");
-  print(await filehelper.getUUID());
+  print("TokenID:");
+  //await filehelper.setTokenID("testTokenID1");
+  print(await filehelper.getTokenID());
 
-  print("UUID:");
-  //await filehelper.setUUID("testUUID1");
-  print(await filehelper.getUUID());
-  */
+  print("TokenSecret:");
+  //await filehelper.setTokenSecret(utf8.encode("testTokenSecret1"));
+  print(await filehelper.getTokenSecret());
+  print(utf8.decode(await filehelper.getTokenSecret()));
 }
