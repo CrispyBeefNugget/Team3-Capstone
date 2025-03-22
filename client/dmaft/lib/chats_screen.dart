@@ -20,6 +20,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
   List<Conversation> _filteredList = [];
   late List<bool> _selected;
 
+  List<List<Contact>> chat_names = []; // Added another list to essentially substitute convoIDs with sender names.
+                                       // Want to remove this and replace with a function that returns sender names
+                                       // so that I don't need to make another filter list of names for searching.
+
   // List<String> testList = ChatTestList.getList();
 
   bool isSearchingMode = false;
@@ -44,9 +48,46 @@ class _ChatsScreenState extends State<ChatsScreen> {
     return db_conversations;
   }
 
-  // String get_name_from_id(String ) {
+  // These are the methods I've created to try replacing the convoID's in the list with the sender names.
+  // ----------------------------------------------------------------------------------------------------
 
-  // }
+  Future<void> get_chat_members() async { // This method works fine but I would rather not use a second list for just names.
+    List<List<Contact>> db_contacts = [];
+    for (int i = 0; i < chat_list.length; i++) {
+      db_contacts.add(await database_service.getConvoMembers(chat_list[i].convoID));
+    }
+    setState(() {
+      chat_names = db_contacts;
+    });
+  }
+
+  // This method theoretically works but I'm struggling to add this in the FutureBuilder below because it takes a parameter.
+  Future<String> resolve_sender_name(conversation_id) async { 
+    List<Contact> sender = await database_service.getConvoMembers(conversation_id);
+    return sender[0].name;
+  }
+
+  // This method has issues, as you can see when running the app and going to the chats tab.
+  String resolve_sender_name2(conversation_id) {
+    String name = '';
+    database_service.getConvoMembers(conversation_id).then((response) {
+      List<Contact> members = response;
+      Contact sender = members[0];
+      String sender_name = sender.name;
+      setState(() {
+        name = sender_name;
+      });
+      name = sender_name;
+      print('Inside .then()');
+      print(sender_name); // Names show up here.
+      return sender_name;
+    });
+    print('Outside .then()');
+    print(name); // Names are blank here.
+    return name;
+  }
+
+  // ----------------------------------------------------------------------------------------------------
 
   void initializeSelection() {
     _selected = List<bool>.generate(chat_list.length, (_) => false);
@@ -72,7 +113,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
       if (_searchController.text != '') {
         isSearchingMode = true;
         _filteredList = chat_list
-          .where((element) => element.convoMembers[1]
+          .where((element) => element.convoID
             .toLowerCase()
             .contains(_searchController.text.toLowerCase()))
           .toList();
@@ -86,6 +127,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
 
       appBar: AppBar(
@@ -122,7 +164,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
       ),
 
       body: FutureBuilder(
-        future: get_chat_info(),
+        future: Future.wait([get_chat_info(), get_chat_members()]),
+        //future: Future.wait([get_chat_info(), get_chat_members(), resolve_sender_name(conversation_id)]), // What I'm trying to do.
         builder: (BuildContext context, AsyncSnapshot snapshot) {
           if (snapshot.hasData) {
 
@@ -179,7 +222,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   itemBuilder: (context, index) => ListTile(
                     leading: Icon(Icons.person),
                     title: Text(
-                      _filteredList[index].convoMembers[1],
+                      //_filteredList[index].convoID,
+                      chat_names[index][0].name, // Ideally I don't want to do this because as soon as you search the names are off.
+                      //resolve_sender_name2(_filteredList[index].convoID),
+                      //resolve_sender_name(_filteredList[index].convoID), // This is what I'm trying to achieve here.
                       style: const TextStyle(color: Colors.black),
                     ),
                     onTap: () => {
@@ -187,7 +233,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => Scaffold(
                           appBar: AppBar(
-                            title: Text(_filteredList[index].convoMembers[1]),
+                            //title: Text(_filteredList[index].convoID),
+                            title: Text(chat_names[index][0].name), // Same as above.
+                            //title: Text(resolve_sender_name2(_filteredList[index].convoID)),
                             centerTitle: true,
                             backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                             foregroundColor: Colors.white,
@@ -233,7 +281,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (context) => Scaffold(
                             appBar: AppBar(
-                              title: Text(chat_list[index].convoMembers[1]),
+                              //title: Text(chat_list[index].convoID),
+                              title: Text(chat_names[index][0].name), // Same as above.
+                              //title: Text(resolve_sender_name2(chat_list[index].convoID)),
                               centerTitle: true,
                               backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                               foregroundColor: Colors.white,
@@ -268,7 +318,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
                           onChanged: (bool? x) => _toggle(index),
                         )
                         : SizedBox.shrink(),
-                    title: Text(chat_list[index].convoMembers[1])
+                    //title: Text(chat_list[index].convoID),
+                    title: Text(chat_names[index][0].name), // Same as above.
+                    //title: Text(resolve_sender_name2(chat_list[index].convoID))
                   ),
                 )
 
