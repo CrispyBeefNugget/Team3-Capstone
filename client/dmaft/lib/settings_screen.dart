@@ -55,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Icon(Icons.account_circle_rounded),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const PFPScreen()),
+                      MaterialPageRoute(builder: (context) => PFPScreen(user: user)),
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
@@ -65,7 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Icon(Icons.alternate_email_outlined),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const UsernameScreen()),
+                      MaterialPageRoute(builder: (context) => UsernameScreen(user: user)),
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
@@ -75,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Icon(Icons.description_rounded),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const BioScreen()),
+                      MaterialPageRoute(builder: (context) => BioScreen(user: user)),
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
@@ -85,7 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Icon(Icons.contact_emergency_rounded),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const PronounsScreen()),
+                      MaterialPageRoute(builder: (context) => PronounsScreen(user: user)),
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
@@ -95,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Icon(Icons.manage_history_sharp),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const MessageHistoryScreen()),
+                      MaterialPageRoute(builder: (context) => MessageHistoryScreen(user: user)),
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
@@ -125,7 +125,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 }
 
 class PFPScreen extends StatefulWidget {
-  const PFPScreen({super.key});
+  const PFPScreen({
+    super.key,
+    required this.user,
+  });
+
+  final Contact user;
 
   @override
   State<PFPScreen> createState() => _PFPScreenState();
@@ -145,7 +150,11 @@ class _PFPScreenState extends State<PFPScreen> {
       // Replace with functionality that changes pfp
       body: Column(
         children: [
-          
+          Center(
+            child: CircleAvatar(
+              backgroundImage: Image.memory(widget.user.pic).image,
+            ),
+          ),
         ],
       ),
 
@@ -154,7 +163,12 @@ class _PFPScreenState extends State<PFPScreen> {
 }
 
 class UsernameScreen extends StatefulWidget {
-  const UsernameScreen({super.key});
+  const UsernameScreen({
+    super.key,
+    required this.user,
+  });
+
+  final Contact user;
 
   @override
   State<UsernameScreen> createState() => _UsernameScreenState();
@@ -173,7 +187,7 @@ class _UsernameScreenState extends State<UsernameScreen> {
 
       // Replace with functionality that changes username
       body: Center(
-        child: Text('This is a test!'),
+        child: Text(widget.user.name),
       ),
 
     );
@@ -181,7 +195,12 @@ class _UsernameScreenState extends State<UsernameScreen> {
 }
 
 class BioScreen extends StatefulWidget {
-  const BioScreen({super.key});
+  const BioScreen({
+    super.key,
+    required this.user,
+  });
+
+  final Contact user;
 
   @override
   State<BioScreen> createState() => _BioScreenState();
@@ -200,7 +219,7 @@ class _BioScreenState extends State<BioScreen> {
 
       // Replace with functionality that changes bio
       body: Center(
-        child: Text('This is a test!'),
+        child: Text(widget.user.bio),
       ),
 
     );
@@ -208,7 +227,12 @@ class _BioScreenState extends State<BioScreen> {
 }
 
 class PronounsScreen extends StatefulWidget {
-  const PronounsScreen({super.key});
+  const PronounsScreen({
+    super.key,
+    required this.user,
+  });
+
+  final Contact user;
 
   @override
   State<PronounsScreen> createState() => _PronounsScreenState();
@@ -227,7 +251,7 @@ class _PronounsScreenState extends State<PronounsScreen> {
 
       // Replace with functionality that changes pfp
       body: Center(
-        child: Text('This is a test!'),
+        child: Text(widget.user.pronouns),
       ),
 
     );
@@ -235,7 +259,12 @@ class _PronounsScreenState extends State<PronounsScreen> {
 }
 
 class MessageHistoryScreen extends StatefulWidget {
-  const MessageHistoryScreen({super.key});
+  const MessageHistoryScreen({
+    super.key,
+    required this.user,
+  });
+
+  final Contact user;
 
   @override
   State<MessageHistoryScreen> createState() => _MessageHistoryScreenState();
@@ -254,7 +283,7 @@ class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
 
       // Replace with functionality that changes pfp
       body: Center(
-        child: Text('This is a test!'),
+        child: Text(widget.user.lastModified),
       ),
 
     );

@@ -35,7 +35,12 @@ class DMAFT extends StatelessWidget {
     net.setUserID(id1);
     net.setServerURL('wss://10.0.2.2:8765');
     net.clientSock.stream.listen((data) {
-      // Inject handler method here.
+      
+      
+
+
+
+
       print(data);
     });
     print("Finished setting up the listener for the UI!");
@@ -49,4 +54,12 @@ class DMAFT extends StatelessWidget {
       debugShowCheckedModeBanner: false,
     );
   }
+}
+
+
+class Handler {
+
+
+
+  
 }
