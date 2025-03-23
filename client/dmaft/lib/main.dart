@@ -27,7 +27,7 @@ class DMAFT extends StatelessWidget {
   // This widget is the root of the DMAFT app.
   @override
   Widget build(BuildContext context) {
-    /*
+    
     final net = Network();
     final id1 = testID1();
     final pair1 = testKeypair1();
@@ -35,10 +35,11 @@ class DMAFT extends StatelessWidget {
     net.setUserID(id1);
     net.setServerURL('wss://10.0.2.2:8765');
     net.clientSock.stream.listen((data) {
+      // Inject handler method here.
       print(data);
     });
     print("Finished setting up the listener for the UI!");
-    */
+    
     return MaterialApp(
       theme: ThemeData(
         useMaterial3: true,

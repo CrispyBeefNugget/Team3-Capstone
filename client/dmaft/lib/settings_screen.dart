@@ -143,8 +143,10 @@ class _PFPScreenState extends State<PFPScreen> {
       ),
 
       // Replace with functionality that changes pfp
-      body: Center(
-        child: Text('This is a test!'),
+      body: Column(
+        children: [
+          
+        ],
       ),
 
     );
