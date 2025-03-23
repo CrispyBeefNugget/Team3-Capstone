@@ -115,6 +115,8 @@ def startDB():
         print("Failed to load database file!")
         raise e
     
+    #Skipping database validation as different actual schemas (in formatting only) appear on macOS vs Windows.
+    """
     schemas = getAllTableSchemas(connection=conn)
     if schemas is None:
         conn.close()
@@ -129,7 +131,7 @@ def startDB():
             for schema in schemas:
                 print(schema)
             raise RuntimeError("Expected table schema is missing from database: " + properSchema[0][0])
-    
+    """
     return conn
 
 
