@@ -2,6 +2,7 @@ import 'package:dmaft/chat_test_list.dart';
 import 'package:flutter/material.dart';
 
 import 'package:dmaft/client_db.dart';
+import 'dart:convert';
 
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
@@ -17,8 +18,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
   final ClientDB database_service = ClientDB.instance;
 
   ({List<Conversation> list, List<String> names}) chat_list = (list: [], names: []);
+  ({List<Conversation> list, List<String> names}) _filteredList = (list: [], names: []);
 
-  List<Conversation> _filteredList = [];
   late List<bool> _selected;
 
   List<List<Contact>> chat_names = []; // Added another list to essentially substitute convoIDs with sender names.
@@ -38,7 +39,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
         chat_list = (list: response.$1, names: response.$2);
       });
       initializeSelection();
-      _filteredList = chat_list.list;
+      _filteredList = chat_list;
     });
     _searchController.addListener(_performSearch);
     super.initState();
@@ -101,8 +102,13 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   // ----------------------------------------------------------------------------------------------------
 
+  Future<List<MsgLog>> get_chat_messages(conversation_id) async {
+    List<MsgLog> messages = await database_service.getMsgLogs(conversation_id);
+    return messages;
+  }
+
   void initializeSelection() {
-    _selected = List<bool>.generate(chat_list.list.length, (_) => false);
+    _selected = List<bool>.generate(chat_list.names.length, (_) => false);
   }
 
   void _toggle(int index) {
@@ -124,15 +130,26 @@ class _ChatsScreenState extends State<ChatsScreen> {
       }
       if (_searchController.text != '') {
         isSearchingMode = true;
-        _filteredList = chat_list.list
-          .where((element) => element.convoID
-            .toLowerCase()
-            .contains(_searchController.text.toLowerCase()))
-          .toList();
+
+        ({List<Conversation> list, List<String> names}) temp_list = (list: [], names: []);
+        for (int i = 0; i < chat_list.list.length; i++) {
+          if (chat_list.names[i].toLowerCase().contains(_searchController.text.toLowerCase())) {
+            temp_list.list.add(chat_list.list[i]);
+            temp_list.names.add(chat_list.names[i]);
+          }
+        }
+        _filteredList = temp_list;
+
+
+        // _filteredList = chat_list
+        //   .where((element_1, element_2) => element_2
+        //     .toLowerCase()
+        //     .contains(_searchController.text.toLowerCase()))
+        //   .toList();
       }
       else {
         isSearchingMode = false;
-        _filteredList = chat_list.list;
+        _filteredList = chat_list;
       }
     });
   }
@@ -231,11 +248,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
               body:
                 isSearchingMode
                 ? ListView.builder(
-                  itemCount: _filteredList.length,
+                  itemCount: _filteredList.names.length,
                   itemBuilder: (context, index) => ListTile(
                     leading: Icon(Icons.person),
                     title: Text(
-                      _filteredList[index].convoID,
+                      _filteredList.names[index],
                       //chat_names[index][0].name, // Ideally I don't want to do this because as soon as you search the names are off.
                       //resolve_sender_name2(_filteredList[index].convoID),
                       //resolve_sender_name(_filteredList[index].convoID), // This is what I'm trying to achieve here.
@@ -246,7 +263,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => Scaffold(
                           appBar: AppBar(
-                            title: Text(_filteredList[index].convoID),
+                            title: Text(_filteredList.names[index]),
                             //title: Text(chat_names[index][0].name), // Same as above.
                             //title: Text(resolve_sender_name2(_filteredList[index].convoID)),
                             centerTitle: true,
@@ -262,9 +279,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
 
 
-                              
+
                               Center(
-                                child: Text(_filteredList[index].lastModified),
+                                child: Text(_filteredList.names[index]),
                               )
                             ],
                           )
@@ -311,9 +328,41 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 Padding(
                                   padding: EdgeInsets.all(10.0)
                                 ),
+
+
+                                FutureBuilder(
+                                  future: get_chat_messages(chat_list.list[index].convoID),
+                                  builder: (BuildContext context2, AsyncSnapshot snapshot2) {
+                                    if (snapshot2.hasData) {
+
+                                      List<MsgLog> messages = snapshot2.data;
+                                      return Text(utf8.decode(messages[0].message));
+                                      // return ListView.builder(                                     // Left off here
+                                      //   itemCount: messages.length,
+                                      //   itemBuilder: (_, index2) => ListTile(
+                                      //     title: Text(utf8.decode(messages[index2].message)),
+                                      //     trailing: Text(messages[index2].rcvTime),
+                                      //   ),
+                                      // );
+                                    }
+                                    else {
+                                      return Center(
+                                        child: CircularProgressIndicator(),
+                                      );
+                                    }
+                                  },
+                                ),
+
+
+
+                                // Center(
+                                //   child: Text(chat_list.list[index]),
+                                // ),
+
+
                                 Center(
-                                  child: Text(chat_list.list[index].lastModified),
-                                )
+                                  child: Text(chat_list.names[index]),
+                                ),
                               ],
                             )
                           ))
