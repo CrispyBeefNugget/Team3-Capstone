@@ -259,9 +259,10 @@ class ClientDB{
       $_contactsNameName = ?,
       $_contactsPronounsName = ?, 
       $_contactsBioName = ?,
+      $_contactsPictureName = ?,
       $_contactsLastModifiedName = ?
       """,
-      [user.id, user.name, user.pronouns, user.bio, user.lastModified]
+      [user.id, user.name, user.pronouns, user.bio, user.pic, user.lastModified]
     );
   }
 
@@ -358,12 +359,13 @@ class ClientDB{
       $_contactsNameName = ?,
       $_contactsPronounsName = ?, 
       $_contactsBioName = ?,
+      $_contactsPictureName = ?,
       $_contactsLastModifiedName = ?
       
       WHERE 
       $_contactsIDName = ?
       """,
-      [contact.name, contact.pronouns, contact.bio, contact.lastModified, contact.id]
+      [contact.name, contact.pronouns, contact.bio, contact.pic, contact.lastModified, contact.id]
     );
   }
 
@@ -562,7 +564,7 @@ class ClientDB{
       }
       firstFlag = false;
       //Add a search for the convoMember's id.
-      query = "$query $_contactsIDName = ${convo.convoMembers[i]}";
+      query = "$query $_contactsIDName = '${convo.convoMembers[i]}'";
     }
     //Fetch the Contacts using the constructed query.
     final db = await database;
