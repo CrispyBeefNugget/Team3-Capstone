@@ -13,6 +13,7 @@ import 'dart:convert';
 class Network {
   static final _defaultServerURL = 'wss://10.0.2.2:8765';
   static var _serverURL = '';
+  static var _opsInProgress = Map();
   static bool _allowJunk = false;         //If false, shut down the connection if it receives any junk data from the server. False in pre-auth or auth contexts; True in post-auth contexts.
   static WebSocketChannel? _serverSock;   //The WebSocket connection to the server is stored here while active.
   late final StreamController clientSock;   //The send-to-client event stream is stored here while a server WebSocket connection is active. Gets initialized in the constructor.
@@ -21,6 +22,9 @@ class Network {
   static String? _userID;
   static String? _tokenID;
   static Uint8List? _tokenSecret;
+  static bool connected = false;
+  static int _maxRetries = 5;
+  static int _retryCount = 0;
   static final wbsAddressRegex = RegExp(r'^wss?:\/\/[\w\d\.\-]+(:\d{1,5})?$');
 
   //Enforce a Singleton design; only one instance of this class can exist
@@ -38,6 +42,7 @@ class Network {
   );
   }
 
+  //GETTER/SETTER METHODS START HERE
   String getServerURL() {
     return _serverURL;
   }
@@ -108,6 +113,57 @@ class Network {
     return _publicKey;
   }
 
+  void setToken(String tokenID, Uint8List tokenSecret) {
+    _tokenID = tokenID;
+    _tokenSecret = tokenSecret;
+    return;
+  }
+
+  //Might only disclose the ID later on for security.
+  //However, at some point the client NEEDS to get the TokenSecret to store it.
+  //Considering that, might as well just provide everything.
+  Map getToken() {
+    return {'TokenID':_tokenID, 'TokenSecret':_tokenSecret};
+  }
+
+  bool isOnline() {
+    return (_serverSock != null);
+  }
+
+  Future<void> sendUserSearchRequest(String searchTerm, {bool searchById = false}) async {
+    if (!_isUiListening()) {
+      throw NetworkStreamListenerRequired();
+    }
+    var requestJson = _constructSearchUserRequest(searchTerm, searchById: searchById);
+    _connectAndAuth();
+    _serverSock!.sink.add(requestJson);
+  }
+
+  //GENERAL INTERNAL USE METHODS HERE
+
+  //Method: operationSuccess
+  //Returns a Future and waits until the given Operation ID key
+  //in _opsInProgress is assigned a true (successful) or false (failed) value.
+  //If operationID isn't a valid key in _opsInProgress, this returns false.
+  //NOTE: This ALSO deletes the operation once done from _opsInProgress.
+  Future<bool> operationSuccess(String operationID) async {
+    try {
+      late bool answer;
+      await Future.doWhile(() => _opsInProgress[operationID] == null);
+      if (_opsInProgress[operationID] == true) {
+        answer = true;
+      }
+      else {
+        answer = false;
+      }
+      _opsInProgress.remove(operationID);
+      return answer;
+    }
+    catch(e) {
+      return false;
+    }
+  }
+
 
   //CLIENT STREAM HANDLER METHODS HERE
 
@@ -120,25 +176,35 @@ class Network {
       if ((_userID != null) && (_tokenID != null) && (_tokenSecret != null)) {
         _allowJunk = true;
         await _connect(_serverURL);
+        connected = true;
         clientSock.add("To the UI: successfully connected to server!");
       }
       else {
         _allowJunk = false;
-        await _connectAndAuth(_serverURL);
+        await _connectAndAuth();
+        connected = true;
         clientSock.add("To the UI: successfully connected and authenticated to server!");
       }
     }
     catch (e) {
+      connected = false;
       clientSock.add("Failed to connect to server URL " + _serverURL);
     }
   }
 
   void _stopServerConnection() {
+    connected = false;
     _disconnect(_allowJunk);
   }
 
+  bool _isUiListening() {
+    return (clientSock.hasListener || !clientSock.isPaused || !clientSock.isClosed);
+  }
+
+
   /*
-  SERVER-SIDE SOCKET HANDLING GOES HERE
+  SERVER-SIDE SOCKET HANDLING METHODS GO HERE.
+  THESE ARE INTENDED ONLY FOR INTERNAL USE.
   */
 
   //Closes the connection when server junk isn't allowed (i.e. in authentication contexts).
@@ -172,6 +238,7 @@ class Network {
     final channel = WebSocketChannel.connect(wsUrl);
     await channel.ready;
     _serverSock = channel;
+    connected = true;
   }
 
   //Method: _disconnect().
@@ -186,16 +253,19 @@ class Network {
       //Do nothing.
       //If we fell into here, the server socket was probably null.
     }
+    connected = false;
     _allowJunk = allowJunkNextTime;
   }
 
   //Method: connectAndAuth().
   //Confirms that a valid RSA keypair is set, then starts a network
   //connection to the specified server and attempts to authenticate.
-  //Parameters: WebSocket server address.
+  //Parameters: None, uses the object's _serverURL.
   //Returns: Nothing if successful, an exception if unsuccessful.
-  Future<bool> _connectAndAuth(String serverWbsAddr) async {
-    await _connect(serverWbsAddr);
+  Future<bool> _connectAndAuth() async {
+    if (connected) return true; //If we're already connected, tell the caller and exit.
+
+    await _connect(_serverURL);
     
     //Generate and send a challenge BEFORE configuring the listener.
     //We're configuring the listener to block until it's done for authentication.
@@ -233,7 +303,7 @@ class Network {
 
     //We have everything we need.
     //Initiate a connection to the server and return success.
-    await _connect(serverWbsAddr);
+    await _connect(_serverURL);
     _serverSock!.stream.listen(
       (msg) {
         _handleServerResponse(msg);
@@ -342,6 +412,14 @@ Each of these handles a specific kind of message.
     print("Client should be disconnected; exiting _handleAuthResponse()...");
   }
 
+  void _handleSearchResponse(Map responseMsg) {
+    if (!_isValidSearchResponse(responseMsg)) {
+      print("Network._handleSearchResponse(): Received invalid response from server!");
+      responseMsg['Successful'] = false;
+    }
+    
+  }
+
 /*
 AUXILIARY FUNCTIONS
 These are helper functions that assist the main functions.
@@ -396,6 +474,28 @@ Can vary from data integrity checks to sub-functions.
     return true;
   }
 
+  bool _isValidSearchResponse(Map responseData) {
+    const requiredKeys = ['Command','Successful','Results'];
+    for (final rkey in requiredKeys) {
+      if (!responseData.containsKey(rkey)) {
+        print("Required key " + rkey + " is missing!");
+        return false;
+      }
+    }
+
+    //Ensure the results are the right format
+    if (responseData['Results'] is! List) return false;
+    for (final item in responseData['Results']) {
+      if (!item.containsKey('UserId') || !item.containsKey('UserName')) {
+        print("Required sub-key missing from one of the response records!");
+        return false;
+      }
+      if (item['UserId'] is! String) return false;
+      if (item['UserName'] is! String) return false;
+    }
+    return true;
+  }
+
   //Checks if a valid token was attached to an authentication response.
   bool _isTokenPresent(Map responseData) {
     const requiredKeys = ['TokenId','TokenSecret'];
@@ -419,7 +519,7 @@ Can vary from data integrity checks to sub-functions.
   //Each of these takes its requested info, and constructs
   //a valid JSON message to send directly to the server.
 
-  String _constructLoginRequest(RSAPublicKey userPublicKey, String userID) {
+  String _constructLoginRequest(RSAPublicKey userPublicKey, String userID, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     final loginRequest = {
       'Command':'CONNECT',
@@ -429,11 +529,14 @@ Can vary from data integrity checks to sub-functions.
       'Register': 'False',
       'UserId': userID,
     };
+    if (operationID != null) {
+      loginRequest['OperationId'] = operationID;
+    }
     const encoder = JsonEncoder();
     return encoder.convert(loginRequest);
   }
 
-  String _constructRegisterRequest(RSAPublicKey userPublicKey) {
+  String _constructRegisterRequest(RSAPublicKey userPublicKey, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     final loginRequest = {
       'Command':'CONNECT',
@@ -443,11 +546,14 @@ Can vary from data integrity checks to sub-functions.
       'Register': 'True',
       'UserId':'',
     };
+    if (operationID != null) {
+      loginRequest['OperationId'] = operationID;
+    }
     const encoder = JsonEncoder();
     return encoder.convert(loginRequest);
   }
 
-  String _constructAuthRequest(String challengeID, Uint8List signatureBytes) {
+  String _constructAuthRequest(String challengeID, Uint8List signatureBytes, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     const b64 = Base64Encoder();
     final connectRequest = {
@@ -457,12 +563,40 @@ Can vary from data integrity checks to sub-functions.
       'HashAlgorithm':'SHA256',
       'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
     };
+    if (operationID != null) {
+      connectRequest['OperationId'] = operationID;
+    }
+    const encoder = JsonEncoder();
+    return encoder.convert(connectRequest);
+  }
+
+  String _constructSearchUserRequest(String searchTerm, {bool searchById = false, String? operationID = null}) {
+    final currentTime = DateTime.timestamp();
+    const b64 = Base64Encoder();
+    var searchBy = 'UserName';
+    if (searchById) searchBy = 'UserId';
+    final connectRequest = {
+      'Command':'SEARCHUSERS',
+      'TokenId':_tokenID,
+      'TokenSecret': b64.convert(_tokenSecret!),
+      'UserId':_userID,
+      'SearchBy':searchBy,
+      'SearchTerm':searchTerm,
+      'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    };
+    if (operationID != null) {
+      connectRequest['OperationId'] = operationID;
+    }
     const encoder = JsonEncoder();
     return encoder.convert(connectRequest);
   }
 
 }
 
+//Throw this exception when a Network object is asked to perform an action that requires network connectivity, when the UI isn't listening.
+class NetworkStreamListenerRequired implements Exception {
+  const NetworkStreamListenerRequired(): super();
+}
 
 //Throw this exception when a Network object is asked to change critical info while connected to a server.
 class ValueFrozenByNetworkConnection implements Exception {
@@ -472,4 +606,14 @@ class ValueFrozenByNetworkConnection implements Exception {
 //Throw this exception when a Network object is instructed to connect and doesn't have its RSA keypair yet.
 class AuthenticationKeypairMissing implements Exception {
   const AuthenticationKeypairMissing(): super();
+}
+
+//Throw this exception when asked to perform an action that requires a non-null token.
+class AuthenticationTokenMissing implements Exception {
+  const AuthenticationTokenMissing(): super();
+}
+
+//Throw this exception when asked to perform an action that requires a non-null User ID.
+class UserIdMissing implements Exception {
+  const UserIdMissing(): super();
 }

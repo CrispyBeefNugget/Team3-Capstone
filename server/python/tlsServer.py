@@ -288,7 +288,7 @@ def handleUpdateProfileRequest(clientRequest: dict):
 
     return clientRequest
 
-535
+
 #Main dispatch function for all received requests.
 #These first few do NOT require valid tokens.
 def handleRequest(clientRequest):
@@ -381,6 +381,7 @@ def makeError(*, clientRequest: dict, retry: bool = False, errorCode, reason: st
         'ServerTimestamp':time.time(),
     }
     try:
+        jsonMsg['OperationId'] = clientRequest.get('OperationId')
         jsonMsg['ClientTimestamp'] = clientRequest['Timestamp']
         jsonMsg['Command'] = clientRequest['Command']
     except:
