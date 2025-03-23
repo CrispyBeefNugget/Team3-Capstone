@@ -29,7 +29,8 @@ def handleConnectRequest(clientRequest: dict):
             if not dmaftServerDB.doesUserExist(connection=dbConn, userID=clientRequest['UserId']):
                 dmaftServerDB.closeDB(dbConn)
                 return makeError(clientRequest=clientRequest, errorCode='InvalidUserId', reason='The specified UserId does not exist. Please specify a different user or send a registration request.')
-        except:
+        except Exception as e:
+            print("handleAuth.handleConnectRequest(): Exception occurred:", e)
             dmaftServerDB.closeDB(dbConn)
             return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', retry=True, reason='Failed to query the database to check if the specified user is registered.')
 
