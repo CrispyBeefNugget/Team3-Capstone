@@ -301,7 +301,7 @@ def handleUpdateProfileRequest(clientRequest: dict):
 #Main dispatch function for all received requests.
 #These first few do NOT require valid tokens.
 def handleRequest(clientRequest):
-    print("Received command from client:\n", clientRequest)
+    #print("Received command from client:\n", clientRequest)
     command = str(clientRequest['Command']).upper()
     if command == 'PING':
         return handlePingMsg(clientRequest)
