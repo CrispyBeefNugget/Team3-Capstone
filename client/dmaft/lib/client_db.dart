@@ -228,7 +228,7 @@ class ClientDB{
     //Fetch user table row.
     data = await db.query(_userTableName);
     //Transform database data into a Contact object
-    Contact user = data
+    List<Contact> user = data
       .map(
         (e) => Contact( //Map database data into Contact class fields.
           id: e[_contactsIDName] as String, 
@@ -239,7 +239,7 @@ class ClientDB{
           lastModified: e[_contactsLastModifiedName] as String,
         )
       ).toList().cast<Contact>(); //Cast dynamic type data to Contact type.
-    return user;
+    return user[0];
   }
 
 
