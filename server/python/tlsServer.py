@@ -22,12 +22,12 @@ import handleAuth
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
 # Nigel's path
-# ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
-# ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
+ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
+ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
 
 # Jeremey's path
-ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
-ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
+#ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
+#ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
 
 # Ben's path
 # ssl_cert = 'C:\Users\Ben\Desktop/dmaft-tls_cert.pem'
@@ -301,6 +301,7 @@ def handleUpdateProfileRequest(clientRequest: dict):
 #Main dispatch function for all received requests.
 #These first few do NOT require valid tokens.
 def handleRequest(clientRequest):
+    print("Received command from client:\n", clientRequest)
     command = str(clientRequest['Command']).upper()
     if command == 'PING':
         return handlePingMsg(clientRequest)
@@ -376,7 +377,7 @@ async def listen(websocket: websockets.asyncio.server.ServerConnection):
 
 async def main():
     ip = getIPAddress()
-    async with websockets.asyncio.server.serve(listen, ip, 8765, ssl=ssl_context) as server:
+    async with websockets.asyncio.server.serve(listen, 'localhost', 8765, ssl=ssl_context) as server:
         print(type(server))
         print("Started server websocket, listening...")
         await server.serve_forever()
