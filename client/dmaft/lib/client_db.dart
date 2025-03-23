@@ -373,9 +373,19 @@ class ClientDB{
   //Parameters: Contact object corresponding to the database entry to be deleted.
   //Returns: Nothing.
   //Example Usage: "clientdb1.delContact(<a_Contact_object>);".
-  //Description: Remove a contact entry from the database using the given Contact object's userID. Will do nothing if the given contact isn't in the database.
+  //Description: Remove a contact entry from the database using the given Contact object's userID. Also deletes any conversations that included this contact! 
+  //  Will do nothing if the given contact isn't in the database.
   Future<void> delContact(Contact contact) async{
     final db = await database;
+    //Find any conversations including the contact you're deleting
+    List<Conversation> allConvos = await getAllConvos();
+    for(int i = 0; i < allConvos.length; i++){
+      if(allConvos[i].convoMembers.contains(contact.id)){
+        //Delete the conversation
+        await delConvo(allConvos[i]);
+      }
+    }
+    //Remove the contact entry
     await db.rawQuery("""
     DELETE FROM 
     $_contactsTableName 
@@ -628,6 +638,7 @@ class ClientDB{
       data = await db.rawQuery("""
       SELECT *
       FROM "$targetConvoID"
+      ORDER BY $_msglogsReceivedTimeName
       """);
     }
     //If there are no rows for the conversation, throw an exception
