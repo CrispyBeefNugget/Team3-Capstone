@@ -13,6 +13,7 @@ import 'dart:convert';
 class Network {
   static final _defaultServerURL = 'wss://10.0.2.2:8765';
   static var _serverURL = '';
+  static var _opsInProgress = Map();
   static bool _allowJunk = false;         //If false, shut down the connection if it receives any junk data from the server. False in pre-auth or auth contexts; True in post-auth contexts.
   static WebSocketChannel? _serverSock;   //The WebSocket connection to the server is stored here while active.
   late final StreamController clientSock;   //The send-to-client event stream is stored here while a server WebSocket connection is active. Gets initialized in the constructor.
@@ -41,6 +42,7 @@ class Network {
   );
   }
 
+  //GETTER/SETTER METHODS START HERE
   String getServerURL() {
     return _serverURL;
   }
@@ -137,6 +139,30 @@ class Network {
     _serverSock!.sink.add(requestJson);
   }
 
+  //GENERAL INTERNAL USE METHODS HERE
+
+  //Method: operationSuccess
+  //Returns a Future and waits until the given Operation ID key
+  //in _opsInProgress is assigned a true (successful) or false (failed) value.
+  //If operationID isn't a valid key in _opsInProgress, this returns false.
+  //NOTE: This ALSO deletes the operation once done from _opsInProgress.
+  Future<bool> operationSuccess(String operationID) async {
+    try {
+      late bool answer;
+      await Future.doWhile(() => _opsInProgress[operationID] == null);
+      if (_opsInProgress[operationID] == true) {
+        answer = true;
+      }
+      else {
+        answer = false;
+      }
+      _opsInProgress.remove(operationID);
+      return answer;
+    }
+    catch(e) {
+      return false;
+    }
+  }
 
 
   //CLIENT STREAM HANDLER METHODS HERE
@@ -493,7 +519,7 @@ Can vary from data integrity checks to sub-functions.
   //Each of these takes its requested info, and constructs
   //a valid JSON message to send directly to the server.
 
-  String _constructLoginRequest(RSAPublicKey userPublicKey, String userID) {
+  String _constructLoginRequest(RSAPublicKey userPublicKey, String userID, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     final loginRequest = {
       'Command':'CONNECT',
@@ -503,11 +529,14 @@ Can vary from data integrity checks to sub-functions.
       'Register': 'False',
       'UserId': userID,
     };
+    if (operationID != null) {
+      loginRequest['OperationId'] = operationID;
+    }
     const encoder = JsonEncoder();
     return encoder.convert(loginRequest);
   }
 
-  String _constructRegisterRequest(RSAPublicKey userPublicKey) {
+  String _constructRegisterRequest(RSAPublicKey userPublicKey, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     final loginRequest = {
       'Command':'CONNECT',
@@ -517,11 +546,14 @@ Can vary from data integrity checks to sub-functions.
       'Register': 'True',
       'UserId':'',
     };
+    if (operationID != null) {
+      loginRequest['OperationId'] = operationID;
+    }
     const encoder = JsonEncoder();
     return encoder.convert(loginRequest);
   }
 
-  String _constructAuthRequest(String challengeID, Uint8List signatureBytes) {
+  String _constructAuthRequest(String challengeID, Uint8List signatureBytes, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     const b64 = Base64Encoder();
     final connectRequest = {
@@ -531,11 +563,14 @@ Can vary from data integrity checks to sub-functions.
       'HashAlgorithm':'SHA256',
       'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
     };
+    if (operationID != null) {
+      connectRequest['OperationId'] = operationID;
+    }
     const encoder = JsonEncoder();
     return encoder.convert(connectRequest);
   }
 
-  String _constructSearchUserRequest(String searchTerm, {bool searchById = false}) {
+  String _constructSearchUserRequest(String searchTerm, {bool searchById = false, String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     const b64 = Base64Encoder();
     var searchBy = 'UserName';
@@ -549,6 +584,9 @@ Can vary from data integrity checks to sub-functions.
       'SearchTerm':searchTerm,
       'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
     };
+    if (operationID != null) {
+      connectRequest['OperationId'] = operationID;
+    }
     const encoder = JsonEncoder();
     return encoder.convert(connectRequest);
   }
