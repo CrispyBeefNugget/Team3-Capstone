@@ -258,6 +258,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
                               Padding(
                                 padding: EdgeInsets.all(10.0)
                               ),
+
+
+
+
+                              
                               Center(
                                 child: Text(_filteredList[index].lastModified),
                               )

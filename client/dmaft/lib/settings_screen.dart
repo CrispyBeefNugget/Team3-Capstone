@@ -40,18 +40,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      //body: FutureBuilder(
-      //  future: get_user(),
-      //  builder: (BuildContext context, AsyncSnapshot snapshot) {
-      //    if (snapshot.hasData) {
-      //      return 
-      body: ListView(
+      body: FutureBuilder(
+        future: get_user(),
+        builder: (BuildContext context, AsyncSnapshot snapshot) {
+          if (snapshot.hasData) {
+            return ListView(
               children: [
                 ListTile(
                   leading: Icon(Icons.alternate_email_outlined),
                   title: Text('UserID'),
-                  //subtitle: Text(user.id),
-                  subtitle: Text('Placeholder'),
+                  subtitle: Text(user.id),
                 ),
                 ListTile(
                   leading: Icon(Icons.account_circle_rounded),
@@ -104,27 +102,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Text('Message History'),
                 ),
               ],
-       //     );
-      ),
-       //   }
-       //   else {
-       //     return Center(
-       //       child: CircularProgressIndicator(),
+            );
+
+          }
+          else {
+            return Center(
+              child: CircularProgressIndicator(),
             );
           }
 
 
         }
-      //)
+      )
       
       
       
       
       
 
-    //);
-  //}
-//}
+    );
+  }
+}
 
 class PFPScreen extends StatefulWidget {
   const PFPScreen({super.key});
