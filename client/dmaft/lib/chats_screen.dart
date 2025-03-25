@@ -39,7 +39,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
     get_chat_info().then((response) {
       setState(() {
         chat_list = (list: response.$1, names: response.$2);
-        print(userIDsToNames);
       });
       initializeSelection();
       _filteredList = chat_list;
