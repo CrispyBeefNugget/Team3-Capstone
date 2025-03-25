@@ -9,17 +9,22 @@ void main () async{
   
 final ClientDB databaseservice = ClientDB.instance; //Access ClientDB database.
 
+var contacts = await databaseservice.getConvoMembers("1");
+contacts.add(await databaseservice.getUser());
+Map<String, String> map = ClientDB.userIDNameMap(contacts);
+print(map);
+
 //Contact user1 = Contact(id: "550516DA-9F37-483F-AB87-A0DAA19203D9", name: "TestUser1", pronouns: "He/Him", bio: "The first test user.", pic: Uint8List(8), lastModified: DateTime.now().toString());
 //Contact user2 = Contact(id: "A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", name: "TestUser2", pronouns: "He/Him", bio: "The second test user.", pic: Uint8List(8), lastModified: DateTime.now().toString());
 //await databaseservice.addContact(user1);
 //await databaseservice.modifyUser(user2);
 //Conversation convo1 = Conversation(convoID: "0D50D38E-C2B9-41F3-B28B-7A59A7264718", convoMembers: ["550516DA-9F37-483F-AB87-A0DAA19203D9", "A052F0CB-235B-4A6A-BAF5-A1E4903FDD75"], lastModified: DateTime.now().toString());
-Conversation convo2 = Conversation(convoID: "0D50D38E-C2B9-41F3-B28B-7A59A7264718", convoMembers: ["A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", "550516DA-9F37-483F-AB87-A0DAA19203D9"], lastModified: DateTime.now().toString());
-await databaseservice.addConvo(convo2);
+//Conversation convo2 = Conversation(convoID: "0D50D38E-C2B9-41F3-B28B-7A59A7264718", convoMembers: ["A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", "550516DA-9F37-483F-AB87-A0DAA19203D9"], lastModified: DateTime.now().toString());
+//await databaseservice.addConvo(convo2);
 
 
-  /*
-Contact user1 = Contact(id: "0", name: "User Userson", pronouns: "They/Them", bio: "testuserbio", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+/*
+Contact user1 = Contact(id: "0", name: "TestUser1", pronouns: "They/Them", bio: "testuserbio", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
 await databaseservice.modifyUser(user1);
 
 Contact cont1 = Contact(id: "1", name: "Frank Richardson", pronouns: "He/Him", bio: "testbio1", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
@@ -60,7 +65,7 @@ await databaseservice.addMsgLog(msg2);
 await databaseservice.addMsgLog(msg3);
 await databaseservice.addMsgLog(msg4);
 await databaseservice.addMsgLog(msg5);
-
+*/
 
   //Conversation conv1 = Conversation(convoID: "1", convoMembers: ["5", "10"]);
   //Conversation conv2 = Conversation(convoID: "2", convoMembers: ["6", "3"]);
@@ -71,19 +76,19 @@ await databaseservice.addMsgLog(msg5);
 
   //DateTime date = DateTime(2025,03,11);
   //databaseservice.delOlderMsgLogs(date);
-/*
-  var convos = await databaseservice.getAllConvos();
-  for(int i = 0; i < 3; i++){
-    print(convos[i].convoID);
-    print(convos[i].convoMembers);
-  }
-*/
+
+  //var convos = await databaseservice.getAllConvos();
+  //for(int i = 0; i < 3; i++){
+  //  print(convos[i].convoID);
+  //  print(convos[i].convoMembers);
+  //}
+
  // databaseservice.modifyConvo(conv2);
   //databaseservice.modifyConvo(conv3);
 
 
 
-  */
+  
 
 
 }

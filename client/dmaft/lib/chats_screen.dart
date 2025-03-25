@@ -22,6 +22,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   late List<bool> _selected;
 
+  Map<String, Map<String, String>> userIDsToNames = {}; //Holds the userIDs and userNames for participants in each conversation.
+
   List<List<Contact>> chat_names = []; // Added another list to essentially substitute convoIDs with sender names.
                                        // Want to remove this and replace with a function that returns sender names
                                        // so that I don't need to make another filter list of names for searching.
@@ -37,6 +39,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
     get_chat_info().then((response) {
       setState(() {
         chat_list = (list: response.$1, names: response.$2);
+        print(userIDsToNames);
       });
       initializeSelection();
       _filteredList = chat_list;
@@ -57,6 +60,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
         temp = "$temp   ${convo_members[j].name}";
       }
       conversation_names.add(temp);
+      //Also update the userIDToName list with convo member data and the user's data.
+      Contact user = await database_service.getUser();
+      convo_members.add(user);
+      Map<String, String> temp2 = ClientDB.userIDNameMap(convo_members);
+      userIDsToNames[db_conversations[i].convoID] = temp2;
     }
     return (db_conversations, conversation_names); //Returns a Record
   }
