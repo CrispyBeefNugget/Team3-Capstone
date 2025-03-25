@@ -284,12 +284,41 @@ class _ChatsScreenState extends State<ChatsScreen> {
                               ),
 
 
+                              FutureBuilder(
+                                future: get_chat_messages(_filteredList.list[index].convoID),
+                                builder: (BuildContext context2, AsyncSnapshot snapshot2) {
+                                  if (snapshot2.hasData) {
 
+                                    List<MsgLog> messages = snapshot2.data;
+                                    return Expanded(
+                                      child: SizedBox(
+                                        child: ListView.builder(
+                                          itemCount: messages.length,
+                                          itemBuilder: (context3, index2) => ListTile(
+                                            title: Text(utf8.decode(messages[index2].message)),
+                                            subtitle: Text(messages[index2].rcvTime),
+                                            titleAlignment: ListTileTitleAlignment.center,
+                                            
+                                          ),
+                                        ),
+                                      ),
+                                      
+                                    );
 
+                                  }
+                                  else {
+                                    return Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
+                                },
+                              ),
 
-                              Center(
-                                child: Text(_filteredList.names[index]),
-                              )
+                              TextField(
+                                decoration: const InputDecoration(
+                                  hintText: 'Type Message',
+                                ),
+                              ),
                             ],
                           )
                         ))
@@ -399,7 +428,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                   ),
                                 ),
                               ],
-                            )
+                            ),
                           ))
                         )
                       }
