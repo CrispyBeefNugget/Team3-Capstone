@@ -336,7 +336,33 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                     if (snapshot2.hasData) {
 
                                       List<MsgLog> messages = snapshot2.data;
-                                      return Text(utf8.decode(messages[0].message));
+                                      return Expanded(
+                                        child: SizedBox(
+                                          child: ListView.builder(
+                                            itemCount: messages.length,
+                                            itemBuilder: (context3, index2) => ListTile(
+                                              title: Text(utf8.decode(messages[index2].message)),
+                                              subtitle: Text(messages[index2].rcvTime),
+                                              titleAlignment: ListTileTitleAlignment.center,
+                                              
+                                            ),
+                                          ),
+                                        ),
+                                          
+
+
+
+                                          // ListTile(
+                                          //   title: Text(utf8.decode(messages[0].message)),
+                                          //   titleAlignment: ListTileTitleAlignment.center,
+                                          // ),
+                                          // ListTile(
+                                          //   title: Text(utf8.decode(messages[1].message)),
+                                          //   titleAlignment: ListTileTitleAlignment.center,
+                                          // ),
+                                        
+                                      );
+
                                       // return ListView.builder(                                     // Left off here
                                       //   itemCount: messages.length,
                                       //   itemBuilder: (_, index2) => ListTile(
@@ -360,8 +386,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 // ),
 
 
-                                Center(
-                                  child: Text(chat_list.names[index]),
+                                TextField(
+                                  decoration: const InputDecoration(
+                                    hintText: 'Type Message',
+                                  ),
                                 ),
                               ],
                             )
