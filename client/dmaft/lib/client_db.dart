@@ -726,24 +726,24 @@ class ClientDB{
 
 
   //Method: delOlderMsgLogs.
-  //Parameters: DateTime object to serve as cutoff point for messages.
+  //Parameters: The number of days the user wants their messages saved for.
   //Returns: Nothing.
-  //Example Usage: "clientdb1.delOlderMsgLogs(DateTime(11,3,2025));" would delete any message logs older than March 11, 2025 00:00:00, so everything from march
-  //  11 back would be deleted.
-  //Description: Remove all message logs in the database older than the given date (inclusive). Date should be provided as a dart DateTime object using the
-  //  local time zone.
-  Future<void> delOlderMsgLogs(DateTime date) async{
+  //Example Usage: "await clientdb1.delOlderMsgLogs(10);" would delete any message logs older than 10 days.
+  //Description: Remove all message logs in the database older than the given number of days from the current date.
+  Future<void> delOlderMsgLogs(int numDays) async{
+    //Calculate the cutoff date for messages.
+    DateTime cutOffDate = DateTime.now().subtract(Duration(days: numDays));
+    //Fetch all conversations.
     final db = await database;
-    //Fetch all conversations and use their convoIDs in message retrieval.
     List<Conversation> convos = await getAllConvos(); 
     //For each conversation's table, delete any messages with dates older than the specified one.
     for(int i = 0; i < convos.length; i++){
       await db.rawQuery(
       """
       DELETE FROM "${convos[i].convoID}" 
-      WHERE $_msglogsReceivedTimeName >= ?
+      WHERE $_msglogsReceivedTimeName < ?
       """,
-      [date.toString()]
+      [cutOffDate.toString()]
       );
     }
   }

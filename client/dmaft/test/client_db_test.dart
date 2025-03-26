@@ -9,11 +9,15 @@ void main () async{
   
 final ClientDB databaseservice = ClientDB.instance; //Access ClientDB database.
 
+print(DateTime.now());
+print(DateTime.now().subtract(Duration(days:15)));
+
+/*
 var contacts = await databaseservice.getConvoMembers("1");
 contacts.add(await databaseservice.getUser());
 Map<String, String> map = ClientDB.userIDNameMap(contacts);
 print(map);
-
+*/
 //Contact user1 = Contact(id: "550516DA-9F37-483F-AB87-A0DAA19203D9", name: "TestUser1", pronouns: "He/Him", bio: "The first test user.", pic: Uint8List(8), lastModified: DateTime.now().toString());
 //Contact user2 = Contact(id: "A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", name: "TestUser2", pronouns: "He/Him", bio: "The second test user.", pic: Uint8List(8), lastModified: DateTime.now().toString());
 //await databaseservice.addContact(user1);
