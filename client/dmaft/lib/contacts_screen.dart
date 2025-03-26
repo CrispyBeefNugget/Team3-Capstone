@@ -214,13 +214,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                 },
                                 icon: Icon(Icons.delete),
                               ),
-                              IconButton(
-                                onPressed: () {
-
-                                },
-                                icon: Icon(Icons.block),
-
-                              )
                             ],
                         ),
                           body: Column( // Left off here 
@@ -305,16 +298,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                   },
                                   icon: Icon(Icons.delete),
                                 ),
-                                IconButton(
-                                  onPressed: () {
-
-                                  },
-                                  icon: Icon(Icons.block),
-
-                                )
                               ],
                             ),
-                            body: Column( // Left off here 
+                            body: Column(
                               children: [
                                 Padding(
                                   padding: EdgeInsets.all(10.0),

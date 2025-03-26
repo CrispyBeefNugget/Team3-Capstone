@@ -114,6 +114,20 @@ class _ChatsScreenState extends State<ChatsScreen> {
     return messages;
   }
 
+  Future<void> delete_conversation(Conversation conversation) async {
+    await database_service.delConvo(conversation);
+  }
+
+  void refresh_conversations() {
+    get_chat_info().then((response) {
+      setState(() {
+        chat_list = (list: response.$1, names: response.$2);
+      });
+      initializeSelection();
+      _filteredList = chat_list;
+    });
+  }
+
   void initializeSelection() {
     _selected = List<bool>.generate(chat_list.names.length, (_) => false);
   }
@@ -224,14 +238,18 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   if (isSelectionMode)
                     IconButton(
                       onPressed: () {
-                        // for (int i = 0; i < testList.length; i++) {
-                        //   if (_selected[i] == true) {
-                        //     testList[i] = '';
-                        //   }
-                        // }
-                        // testList.removeWhere((String chat) => chat == '');
-                        // isSelectionMode = false; // Need to implement list refreshing and properly close out of selection mode.
-                        // Insert delete function here.
+                        
+                        for (int i = 0; i < chat_list.list.length; i++) {
+                          if (_selected[i] == true) {
+                            delete_conversation(chat_list.list[i]);
+                          }
+                        }
+                        refresh_conversations();
+                        setState(() {
+                          isSelectionMode = false;
+                          initializeSelection();
+                        });
+
                       },
                       icon: Icon(Icons.delete)
                     ),
@@ -276,6 +294,17 @@ class _ChatsScreenState extends State<ChatsScreen> {
                             centerTitle: true,
                             backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                             foregroundColor: Colors.white,
+                            actions: [
+                                IconButton(
+                                  onPressed: () {
+                                    delete_conversation(_filteredList.list[index]);
+                                    refresh_conversations();
+                                    Navigator.pop(context);
+                                    _searchController.text = '';
+                                  },
+                                  icon: Icon(Icons.delete),
+                                ),
+                              ],
                           ),
                           body: Column(
                             children: [
@@ -318,6 +347,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 decoration: const InputDecoration(
                                   hintText: 'Type Message',
                                 ),
+                                style: const TextStyle(color: Colors.black),
+                                cursorColor: Colors.black,
                               ),
                             ],
                           )
@@ -358,6 +389,16 @@ class _ChatsScreenState extends State<ChatsScreen> {
                               centerTitle: true,
                               backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                               foregroundColor: Colors.white,
+                              actions: [
+                                IconButton(
+                                  onPressed: () {
+                                    delete_conversation(chat_list.list[index]);
+                                    refresh_conversations();
+                                    Navigator.pop(context);
+                                  },
+                                  icon: Icon(Icons.delete),
+                                ),
+                              ],
                             ),
                             body: Column(
                               children: [
