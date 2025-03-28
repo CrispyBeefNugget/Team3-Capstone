@@ -1,7 +1,7 @@
-import 'package:dmaft/chat_test_list.dart';
 import 'package:flutter/material.dart';
 
 import 'package:dmaft/client_db.dart';
+import 'package:dmaft/network.dart';
 import 'dart:convert';
 
 class ChatsScreen extends StatefulWidget {
@@ -25,12 +25,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
   late List<bool> _selected;
 
   Map<String, Map<String, String>> userIDsToNames = {}; //Holds the userIDs and userNames for participants in each conversation.
-
-  List<List<Contact>> chat_names = []; // Added another list to essentially substitute convoIDs with sender names.
-                                       // Want to remove this and replace with a function that returns sender names
-                                       // so that I don't need to make another filter list of names for searching.
-
-  // List<String> testList = ChatTestList.getList();
 
   bool isSearchingMode = false;
   bool isSelectionMode = false;
@@ -322,7 +316,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                         print(_messageContent.text);
                                         MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: 'test', message: utf8.encode(_messageContent.text));
                                         database_service.addMsgLog(log);
-
+                                        Network net = Network();
+                                        net.sendTextMessage(_filteredList.list[index].convoID, _messageContent.text);
                                         refresh_messages(_filteredList.list[index].convoID);
                                       },
                                       icon: Icon(Icons.send),
@@ -449,9 +444,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                       child: IconButton(
                                         onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
                                           print(_messageContent.text);
-                                          MsgLog log = MsgLog(convoID: chat_list.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: 'test', message: utf8.encode(_messageContent.text));
+                                          MsgLog log = MsgLog(convoID: chat_list.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: 'test', message: utf8.encode(_messageContent.text)); // Change to the generated IDs provided by Ben's methods.
                                           database_service.addMsgLog(log);
-
+                                          Network net = Network();
+                                        net.sendTextMessage(chat_list.list[index].convoID, _messageContent.text);
                                           refresh_messages(chat_list.list[index].convoID);
                                         },
                                         icon: Icon(Icons.send),

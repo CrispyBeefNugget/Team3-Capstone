@@ -8,8 +8,6 @@ import 'package:dmaft/settings_screen.dart';
 
 import 'package:dmaft/client_db.dart';
 
-import 'package:dmaft/chat_test_list.dart';
-
 class AppScreen extends StatefulWidget {
   const AppScreen({super.key});
 
@@ -19,7 +17,7 @@ class AppScreen extends StatefulWidget {
 
 class _AppScreenState extends State<AppScreen> {
 
-  int unread = ChatTestList.getSize();
+  late int unread;
 
   int myIndex = 1; // Default page on app startup.
   List<Widget> widgetList = const [
