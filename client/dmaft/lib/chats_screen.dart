@@ -20,6 +20,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
   ({List<Conversation> list, List<String> names}) chat_list = (list: [], names: []);
   ({List<Conversation> list, List<String> names}) _filteredList = (list: [], names: []);
 
+  List<MsgLog> messages = [];
+
   late List<bool> _selected;
 
   Map<String, Map<String, String>> userIDsToNames = {}; //Holds the userIDs and userNames for participants in each conversation.
@@ -68,54 +70,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
     return (db_conversations, conversation_names); //Returns a Record
   }
 
-  // These are the methods I've created to try replacing the convoID's in the list with the sender names.
-  // ----------------------------------------------------------------------------------------------------
-
-  Future<void> get_chat_members() async { // This method works fine but I would rather not use a second list for just names.
-    List<List<Contact>> db_contacts = [];
-    for (int i = 0; i < chat_list.list.length; i++) {
-      db_contacts.add(await database_service.getConvoMembers(chat_list.list[i].convoID));
-    }
-    setState(() {
-      chat_names = db_contacts;
-    });
-  }
-
-  // This method theoretically works but I'm struggling to add this in the FutureBuilder below because it takes a parameter.
-  Future<String> resolve_sender_name(conversation_id) async { 
-    List<Contact> sender = await database_service.getConvoMembers(conversation_id);
-    return sender[0].name;
-  }
-
-  // This method has issues, as you can see when running the app and going to the chats tab.
-  String resolve_sender_name2(conversation_id) {
-    String name = '';
-    database_service.getConvoMembers(conversation_id).then((response) {
-      List<Contact> members = response;
-      Contact sender = members[0];
-      String sender_name = sender.name;
-      setState(() {
-        name = sender_name;
-      });
-      name = sender_name;
-      print('Inside .then()');
-      print(sender_name); // Names show up here.
-      return sender_name;
-    });
-    print('Outside .then()');
-    print(name); // Names are blank here.
-    return name;
-  }
-
-  // ----------------------------------------------------------------------------------------------------
-
   Future<List<MsgLog>> get_chat_messages(conversation_id) async {
-    List<MsgLog> messages = await database_service.getMsgLogs(conversation_id);
-    return messages;
-  }
-
-  Future<void> delete_conversation(Conversation conversation) async {
-    await database_service.delConvo(conversation);
+    List<MsgLog> logs = await database_service.getMsgLogs(conversation_id);
+    return logs;
   }
 
   void refresh_conversations() {
@@ -125,6 +82,14 @@ class _ChatsScreenState extends State<ChatsScreen> {
       });
       initializeSelection();
       _filteredList = chat_list;
+    });
+  }
+
+  void refresh_messages(String conversation_id) {
+    get_chat_messages(conversation_id).then((response) {
+      setState(() {
+        messages = response;
+      });
     });
   }
 
@@ -161,12 +126,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
         }
         _filteredList = temp_list;
 
-
-        // _filteredList = chat_list
-        //   .where((element_1, element_2) => element_2
-        //     .toLowerCase()
-        //     .contains(_searchController.text.toLowerCase()))
-        //   .toList();
       }
       else {
         isSearchingMode = false;
@@ -215,8 +174,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
       body: FutureBuilder(
         future: get_chat_info(),
-        //future: Future.wait([get_chat_info(), get_chat_members()]),
-        //future: Future.wait([get_chat_info(), get_chat_members(), resolve_sender_name(conversation_id)]), // What I'm trying to do.
         builder: (BuildContext context, AsyncSnapshot snapshot) {
           if (snapshot.hasData) {
 
@@ -241,7 +198,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                         
                         for (int i = 0; i < chat_list.list.length; i++) {
                           if (_selected[i] == true) {
-                            delete_conversation(chat_list.list[i]);
+                            database_service.delConvo(chat_list.list[i]);
                           }
                         }
                         refresh_conversations();
@@ -278,26 +235,24 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     leading: Icon(Icons.person),
                     title: Text(
                       _filteredList.names[index],
-                      //chat_names[index][0].name, // Ideally I don't want to do this because as soon as you search the names are off.
-                      //resolve_sender_name2(_filteredList[index].convoID),
-                      //resolve_sender_name(_filteredList[index].convoID), // This is what I'm trying to achieve here.
                       style: const TextStyle(color: Colors.black),
                     ),
-                    onTap: () => {
-                      
+                    onTap: () {
+                      TextEditingController _messageContent = TextEditingController();
+
+                      refresh_messages(_filteredList.list[index].convoID); // Need to fix
+
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => Scaffold(
                           appBar: AppBar(
                             title: Text(_filteredList.names[index]),
-                            //title: Text(chat_names[index][0].name), // Same as above.
-                            //title: Text(resolve_sender_name2(_filteredList[index].convoID)),
                             centerTitle: true,
                             backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                             foregroundColor: Colors.white,
                             actions: [
                                 IconButton(
                                   onPressed: () {
-                                    delete_conversation(_filteredList.list[index]);
+                                    database_service.delConvo(_filteredList.list[index]);
                                     refresh_conversations();
                                     Navigator.pop(context);
                                     _searchController.text = '';
@@ -312,13 +267,17 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 padding: EdgeInsets.all(10.0)
                               ),
 
-
                               FutureBuilder(
                                 future: get_chat_messages(_filteredList.list[index].convoID),
                                 builder: (BuildContext context2, AsyncSnapshot snapshot2) {
-                                  if (snapshot2.hasData) {
 
-                                    List<MsgLog> messages = snapshot2.data;
+                                  if (snapshot2.connectionState != ConnectionState.done) {
+                                    return Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
+
+                                  else if (snapshot2.hasData) {
                                     return Expanded(
                                       child: SizedBox(
                                         child: ListView.builder(
@@ -343,17 +302,46 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 },
                               ),
 
-                              TextField(
-                                decoration: const InputDecoration(
-                                  hintText: 'Type Message',
-                                ),
-                                style: const TextStyle(color: Colors.black),
-                                cursorColor: Colors.black,
+                              Row(
+                                children: <Widget>[
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _messageContent,
+                                      decoration: const InputDecoration(
+                                        hintText: 'Type Message',
+                                      ),
+                                      style: const TextStyle(color: Colors.black),
+                                      cursorColor: Colors.black,
+                                    ),
+                                  ),
+
+                                  SizedBox(
+                                    width: 50,
+                                    child: IconButton(
+                                      onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
+                                        print(_messageContent.text);
+                                        MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: 'test', message: utf8.encode(_messageContent.text));
+                                        database_service.addMsgLog(log);
+
+                                        refresh_messages(_filteredList.list[index].convoID);
+                                      },
+                                      icon: Icon(Icons.send),
+                                    ),
+                                  ),
+                                
+                                ],
                               ),
+
+                              Padding(
+                                padding: EdgeInsets.all(10.0)
+                              ),
+
+                              
+
                             ],
                           )
                         ))
-                      )
+                      );
                       
 
                     },
@@ -375,24 +363,26 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   itemCount: _selected.length,
                   itemBuilder: (context, index) => ListTile(
                     leading: Icon(Icons.person),
-                    onTap: () => {
+                    onTap: () {
                       if (isSelectionMode) {
-                        _toggle(index)
+                        _toggle(index);
                       }
                       else {
+                        TextEditingController _messageContent = TextEditingController();
+
+                        refresh_messages(_filteredList.list[index].convoID); // Need to fix
+
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (context) => Scaffold(
                             appBar: AppBar(
                               title: Text(chat_list.names[index]),
-                              //title: Text(chat_names[index][0].name), // Same as above.
-                              //title: Text(resolve_sender_name2(chat_list[index].convoID)),
                               centerTitle: true,
                               backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                               foregroundColor: Colors.white,
                               actions: [
                                 IconButton(
                                   onPressed: () {
-                                    delete_conversation(chat_list.list[index]);
+                                    database_service.delConvo(chat_list.list[index]);
                                     refresh_conversations();
                                     Navigator.pop(context);
                                   },
@@ -411,8 +401,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                   future: get_chat_messages(chat_list.list[index].convoID),
                                   builder: (BuildContext context2, AsyncSnapshot snapshot2) {
                                     if (snapshot2.hasData) {
-
-                                      List<MsgLog> messages = snapshot2.data;
                                       return Expanded(
                                         child: SizedBox(
                                           child: ListView.builder(
@@ -428,25 +416,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                           
 
 
-
-                                          // ListTile(
-                                          //   title: Text(utf8.decode(messages[0].message)),
-                                          //   titleAlignment: ListTileTitleAlignment.center,
-                                          // ),
-                                          // ListTile(
-                                          //   title: Text(utf8.decode(messages[1].message)),
-                                          //   titleAlignment: ListTileTitleAlignment.center,
-                                          // ),
                                         
                                       );
 
-                                      // return ListView.builder(                                     // Left off here
-                                      //   itemCount: messages.length,
-                                      //   itemBuilder: (_, index2) => ListTile(
-                                      //     title: Text(utf8.decode(messages[index2].message)),
-                                      //     trailing: Text(messages[index2].rcvTime),
-                                      //   ),
-                                      // );
+
                                     }
                                     else {
                                       return Center(
@@ -458,20 +431,43 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
 
 
-                                // Center(
-                                //   child: Text(chat_list.list[index]),
-                                // ),
+                                  Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _messageContent,
+                                        decoration: const InputDecoration(
+                                          hintText: 'Type Message',
+                                        ),
+                                        style: const TextStyle(color: Colors.black),
+                                        cursorColor: Colors.black,
+                                      ),
+                                    ),
 
+                                    SizedBox(
+                                      width: 50,
+                                      child: IconButton(
+                                        onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
+                                          print(_messageContent.text);
+                                          MsgLog log = MsgLog(convoID: chat_list.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: 'test', message: utf8.encode(_messageContent.text));
+                                          database_service.addMsgLog(log);
 
-                                TextField(
-                                  decoration: const InputDecoration(
-                                    hintText: 'Type Message',
-                                  ),
+                                          refresh_messages(chat_list.list[index].convoID);
+                                        },
+                                        icon: Icon(Icons.send),
+                                      ),
+                                    ),
+                                  
+                                  ],
+                                ),
+
+                                Padding(
+                                  padding: EdgeInsets.all(10.0)
                                 ),
                               ],
                             ),
                           ))
-                        )
+                        );
                       }
                     },
 
@@ -491,8 +487,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                         )
                         : SizedBox.shrink(),
                     title: Text(chat_list.names[index]),
-                    //title: Text(chat_names[index][0].name ?? ""), // Same as above.
-                    //title: Text(resolve_sender_name2(chat_list[index].convoID))
                   ),
                 )
 
