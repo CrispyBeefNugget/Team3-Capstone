@@ -22,12 +22,12 @@ import handleAuth
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
 # Nigel's path
-# ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
-# ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
+ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
+ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
 
 # Jeremey's path
-ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
-ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
+#ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
+#ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
 
 # Ben's path
 # ssl_cert = 'C:\Users\Ben\Desktop/dmaft-tls_cert.pem'
@@ -44,9 +44,30 @@ def getRSAPublicKeySHA512(pubkey: rsa.RSAPublicKey):
     return sha512Thumbprint
 
 #Message handlers
-def handlePingMsg(clientRequest: dict):
+def handlePingMsg(clientRequest: dict, websocket: websockets.asyncio.server.ServerConnection):
+    global connectedClients
+    #Attempt authentication if a token is present
+    triedAuth = False
+    authKeys = {'TokenId','TokenSecret','UserId'}
+    keys = set(clientRequest.keys())
+    if authKeys.issubset(keys):
+        keepGoing = True
+        #Make sure that all the keys are populated before trying.
+        for akey in authKeys:
+            if (type(clientRequest[akey]) != str):
+                keepGoing = False
+        
+        if keepGoing:
+            triedAuth = True
+            result = handleAuth.validateClientToken(clientRequest)
+            authSuccessful = not ('ErrorType' in result.keys())
+            if authSuccessful:
+                connectedClients.setUserOnSocket(websocket, result['UserId'])
+
     clientRequest['Successful'] = True
     clientRequest['ServerTimestamp'] = time.time()
+    if triedAuth:
+        clientRequest['AuthSuccessful'] = authSuccessful
     return clientRequest
 
 
@@ -201,7 +222,7 @@ def handleSendMessageRequest(clientRequest: dict):
 
     #Validate the Conversation ID and get the list of recipients
     dbConn = dmaftServerDB.startDB()
-    sqlResult = dmaftServerDB.getConversationByID(clientRequest['ConversationId'])
+    sqlResult = dmaftServerDB.getConversationByID(connection = dbConn, conversationID=clientRequest['ConversationId'])
     dmaftServerDB.closeDB(dbConn)
 
     if sqlResult is None:
@@ -229,11 +250,10 @@ def handleSendMessageRequest(clientRequest: dict):
     remainingUsers = connectedClients.broadcastToUsers(participants, userMsgJSON)
 
     #If any recipients missed the notification, store it in the mailbox to send to them later.
-    #Mark the conversation as SYSTEM so that we know it isn't a user-sent message.
     if len(remainingUsers) > 0:
         dbConn = dmaftServerDB.startDB()
         for user in remainingUsers:
-            dmaftServerDB.addToMailbox(connection=dbConn, conversationID='SYSTEM', recipientID=user, msgDict=userMsgJSON, expireTime=(int(time.time()) + 604800)) #Give it one week to send out
+            dmaftServerDB.addToMailbox(connection=dbConn, conversationID=clientRequest['ConversationId'], recipientID=user, msgDict=userMsgJSON, expireTime=(int(time.time()) + 604800)) #Give it one week to send out
 
     clientRequest['Successful'] = True
     clientRequest['ServerTimestamp'] = int(time.time())
@@ -300,11 +320,11 @@ def handleUpdateProfileRequest(clientRequest: dict):
 
 #Main dispatch function for all received requests.
 #These first few do NOT require valid tokens.
-def handleRequest(clientRequest):
+def handleRequest(clientRequest, websocket: websockets.asyncio.server.ServerConnection):
     #print("Received command from client:\n", clientRequest)
     command = str(clientRequest['Command']).upper()
     if command == 'PING':
-        return handlePingMsg(clientRequest)
+        return handlePingMsg(clientRequest, websocket)
         
     #This needs to be renamed to a different command.
     #"CONNECT" is reserved for one client wanting to connect to another client.
@@ -319,12 +339,20 @@ def handleRequest(clientRequest):
     else:
         #Validate the client's token.
         clientRequest = handleAuth.validateClientToken(clientRequest)
-        if clientRequest.get('Successful', 'HelloThere') == False:
-            return clientRequest    #Audit this line later on. validateClientToken is supposed to return an error dictionary if it fails, that we can just directly send. However, an attacker could just purposely set Successful == False in their clientRequest.
+        print("Data received from handleAuth.validateClientToken():\n", clientRequest)
         
+        try:
+            if 'ErrorType' in clientRequest.keys():
+                return clientRequest    #Audit this line later on. validateClientToken is supposed to return an error dictionary if it fails, that we can just directly send. However, an attacker could just purposely set Successful == False in their clientRequest.
+        except:
+            return clientRequest
+
         #Client's token is validated. Allow remaining access.
         if command == 'SEARCHUSERS':
             print("Detected SEARCHUSERS request.")
+
+        elif command == 'SENDMESSAGE':
+            return handleSendMessageRequest(clientRequest)
             
 
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Invalid command received from client.')
@@ -339,10 +367,12 @@ async def listen(websocket: websockets.asyncio.server.ServerConnection):
         async for message in websocket:
             if (connectedClients.getClientFromSocket(websocket) == []):
                 connectedClients.addSocket(websocket)
+                print("Added websocket with ID", websocket.id)
 
             i += 1
             print('Count:', i)
             print("Received message!")
+            print(message)
             try:
                 clientRequest = json.loads(message)
             except:
@@ -351,7 +381,7 @@ async def listen(websocket: websockets.asyncio.server.ServerConnection):
                 continue
             
             try:
-                serverReply = handleRequest(clientRequest)
+                serverReply = handleRequest(clientRequest, websocket)
                 print("Sending to client:", serverReply)
                 await websocket.send(json.dumps(serverReply))
                 print("Successfully processed request.\n")
@@ -365,12 +395,12 @@ async def listen(websocket: websockets.asyncio.server.ServerConnection):
                 await websocket.send(json.dumps(serverReply))
 
     except websockets.exceptions.ConnectionClosed as closed:
-        print("Client disconnected:", closed)
+        print("Websocket ID", websocket.id, "disconnected:", closed)
         connectedClients.deleteSocket(websocket)
         print("Removed this websocket from the list of active clients.")
 
     except Exception as e:
-        print('Exception raised when trying to send message:', websocket, e)
+        print('Exception raised when trying to send message on websocket ID', websocket.id, ':', websocket, e)
         connectedClients.deleteSocket(websocket)
         print("Removed this websocket from the list of active clients.")
 
@@ -405,7 +435,7 @@ def cleanAuthData(clientRequest: dict):
             del clientRequest[item]
         except:
             pass
-        return clientRequest
+    return clientRequest
     
 def getIPAddress():
     tempSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

@@ -543,6 +543,9 @@ def getConversationByID(*, connection: sqlite3.Connection, conversationID: str):
         return None
     
 
+#Checks if a conversation exists.
+#Returns True if it does and False if not.
+#Raises a RuntimeError if the conversation table can't be queried.
 def doesConversationExist(*, connection: sqlite3.Connection, conversationID: str):
     result = executeQuery(connection = connection, query = 'SELECT ConversationID from tblConversations;')
     if result is None:
@@ -554,7 +557,19 @@ def doesConversationExist(*, connection: sqlite3.Connection, conversationID: str
         currentConvoIDs.append(str(row[0]).upper())
 
     return (conversationID.upper() in currentConvoIDs)
+
+
+#Attempts to remove a user from the userlist in a conversation.
+#Returns true if successful and false if not.
+def removeUserFromConversation(*, connection: sqlite3.Connection, conversationID: str, userID: str):
+    #Five general steps to this:
+    #1. Ensure that the specified conversation actually exists.
+    #2. Ensure that the specified user actually exists.
+    #3. Remove the user from the conversation in the Conversations table.
+    #4. Remove the conversation ID from the RegisteredUsers table.
+    #5. Notify everyone.
     
+    pass
 
 
 #MAILBOX DATA

@@ -199,9 +199,9 @@ def validateClientToken(clientRequest: dict):
            clientRequest = cleanAuthData(clientRequest)
            return makeError(clientRequest=clientRequest, errorCode='InvalidToken', reason='The provided token is invalid. Please authenticate.')
     
-        if str(authorizedUser).upper != str(clientRequest['UserId']).upper():
+        if str(authorizedUser).upper() != str(clientRequest['UserId']).upper():
             clientRequest = cleanAuthData(clientRequest)
-            return makeError(clientRequest=clientRequest, errorCode='InvalidToken', reason='The provided token is invalid. Please authenticate.')
+            return makeError(clientRequest=clientRequest, errorCode='InvalidToken', reason='A User ID validation error occurred after successful authentication.')
     
         return cleanAuthData(clientRequest)
     

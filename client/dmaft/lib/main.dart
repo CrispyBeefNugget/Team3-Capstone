@@ -35,12 +35,6 @@ class DMAFT extends StatelessWidget {
     net.setUserID(id1);
     net.setServerURL('wss://10.0.2.2:8765');
     net.clientSock.stream.listen((data) {
-      
-      
-
-
-
-
       print(data);
     });
     print("Finished setting up the listener for the UI!");

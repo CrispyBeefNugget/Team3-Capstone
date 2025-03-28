@@ -1,6 +1,7 @@
 import websockets
 import websockets.asyncio
 import websockets.asyncio.server
+import asyncio
 
 class ConnectionList:
     def __init__(self):
@@ -11,7 +12,7 @@ class ConnectionList:
         #Credit to here for this method: https://stackoverflow.com/a/25373204
     
     def getClientsFromUser(self, userID: str):
-        return list(filter(lambda client: client['UserId'].upper() == userID.upper(), self.clients))
+        return list(filter(lambda client: str(client['UserId']).upper() == userID.upper(), self.clients))
 
     def deleteSocket(self, socket: websockets.asyncio.server.ServerConnection):
         for client in self.clients:
@@ -27,17 +28,20 @@ class ConnectionList:
                 client['UserId'] = userID
             
     def isUserConnected(self, userID: str):
-        return len(list(filter(lambda client: client['UserId'].upper() == userID.upper(), self.clients))) > 0
+        return len(self.getClientsFromUser(userID)) > 0
 
 
     #Returns True if successful and False if failed.
     #If the connection was closed earlier, it will be removed from the ConnectionList.
     #If the connection wasn't previously present, it will be added.
     async def sendMsgToSocket(self, socket: websockets.asyncio.server.ServerConnection, msgData: bytes):
+        print("Executing sendMsgToSocket on socket ID", socket.id)
         if len(self.getClientFromSocket(socket)) == 0:
+            print("The provided websocket is missing! Adding it...")
             self.addSocket(socket)
         try:
             await socket.send(msgData)
+            print("Successfully sent the message!")
             return True
         except websockets.exceptions.ConnectionClosed as closed:
             print("The socket is closed, removing...")
@@ -51,11 +55,13 @@ class ConnectionList:
         successStatus = False
         clients = self.getClientsFromUser(userID)
         if len(clients) == 0:
+            print("clients.sendMsgToUser(): Found no websocket connections for user", userID)
             return False
     
         for client in clients:
             try:
-                self.sendMsgToSocket(client['Socket'], msgData)
+                print("Creating task to send message to user ", userID, "on socket ID", str(client['Socket'].id))
+                task = asyncio.create_task(self.sendMsgToSocket(client['Socket'], msgData))
                 successStatus = True
             except:
                 print("Client found with missing socket! Removing...")
@@ -69,5 +75,6 @@ class ConnectionList:
         for user in userList:
             if self.sendMsgToUser(user, msgData):
                 usersRemaining.remove(user)
+                print("Successfully delivered message to user " + user)
         
         return usersRemaining

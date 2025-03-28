@@ -6,6 +6,9 @@ import uuid
 #PING
 pingMsgFormat = {
     'Command':'PING',
+    'TokenId':'', #OPTIONAL. If passed then all other fields are required. The server will attempt to authenticate the user and tie their websocket to their user ID.
+    'TokenSecret':'', #OPTIONAL, ephemeral token provided to 'securely' keep the session alive. Most major platforms use a token of some kind for continued auth.
+    'UserId':'', #OPTIONAL, server-issued, permanent User ID. Might not be needed since the server-side DB already has the token associated with a user ID.
     'ClientTimestamp': time.time(),
 }
 
@@ -46,6 +49,15 @@ newConversationMsgFormat = {
     'ClientTimestamp':'',
 }
 
+leaveConversationMsgFormat = {
+    'Command':'LEAVECONVERSATION',
+    'TokenId':'',
+    'TokenSecret':'',
+    'UserId':'',
+    'ConversationId':'',
+    'ClientTimestamp':'',
+}
+
 sendMessageMsgFormat = {
     'Command':'SENDMESSAGE',
     'TokenId':'',
@@ -81,40 +93,12 @@ uploadProfileMsgFormat = {
     'ClientTimestamp': time.time(),
 }
 
-#Not supported yet.
-newConvoPolicyMsgFormat = {
-    'Command':'SETPEERPOLICY',
+getOldMessagesMsgFormat = {
+    'Command':'GETMESSAGES',
     'TokenId':'',
     'TokenSecret':'', #ephemeral token provided to 'securely' keep the session alive. Most major platforms use a token of some kind for continued auth.
     'UserId':'', #server-issued, permanent User ID. Might not be needed since the server-side DB already has the token associated with a user ID.
     'ClientTimestamp': time.time(),
-    'PeerPolicy': {
-        'AllowedUsers': [],
-        'AllowedKeys': [],
-        'BlockedUsers': [],
-        'BlockedKeys': [],
-        'BcryptHash':'',
-        'AllowOthers':bool, #if true, others who aren't on the allow or block lists can contact this person. If BcryptHash is non-empty, the correct password must first be specified.
-        'RequireAuthForAllowListed':bool, #if true AND if BcryptHash is non-empty, those on the allowlist must still enter the correct password first.
-    },
-    'Profile': {
-        'Name': {
-            'Value': '',
-            'Visibility':'',
-        },
-        'Photo': {
-            'Value': str, #Base64-encoded data
-            'Visibility':'',
-        },
-        'Status': {
-            'Value': str,
-            'Visibility':'',
-        },
-        'Bio': {
-            'Value': str,
-            'Visibility':'',
-        },
-    }
 }
 
 
@@ -154,6 +138,7 @@ errorTypes = [
 pingReplyFormat = {
     'Command': 'PING',
     'Successful': True,
+    'AuthSuccessful': bool, #only appears if the client submitted their token info.
     'ClientTimestamp':'', #inherited from request
     'ServerTimestamp': time.time()
 }
@@ -200,6 +185,13 @@ newConversationCreatedMsgFormat = {
     'ConversationId':'', #server-issued Conversation ID for this conversation.
 }
 
+userLeftMsgFormat = {
+    'Command':'USERLEFT',
+    'LeavingUserId':'',
+    'ConversationId':'',
+    'ServerTimestamp':time.time(),
+}
+
 searchUsersResponseMsgFormat = {
     'Command':'SEARCHUSERS',
     'Successful': True,
@@ -213,4 +205,10 @@ uploadProfileResponseMsgFormat = {
     'Command':'UPDATEPROFILE',
     'Successful': True,
     'ServerTimestamp': time.time()
+}
+
+getOldMessagesResponseFormat = {
+    'Command':'GETMESSAGES',
+    'Successful': True,
+    'ClientTimestamp': time.time(),
 }

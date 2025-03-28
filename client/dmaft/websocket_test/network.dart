@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:dmaft/asym_crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart';
 import 'package:pointycastle/export.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
@@ -23,6 +24,7 @@ class Network {
   static String? _tokenID;
   static Uint8List? _tokenSecret;
   static bool connected = false;
+  static bool _authInProgress = false;
   static int _maxRetries = 5;
   static int _retryCount = 0;
   static final wbsAddressRegex = RegExp(r'^wss?:\/\/[\w\d\.\-]+(:\d{1,5})?$');
@@ -36,9 +38,9 @@ class Network {
     resetServerURL();
     clientSock = StreamController(
     onPause: () => _stopServerConnection(),
-    onResume: () => _startServerConnection(),
+    onResume: () => print("Please connect manually."),
     onCancel: () => _stopServerConnection(),
-    onListen: () => _startServerConnection(),
+    onListen: () => print("Please connect manually."),
   );
   }
 
@@ -135,7 +137,7 @@ class Network {
       throw NetworkStreamListenerRequired();
     }
     var requestJson = _constructSearchUserRequest(searchTerm, searchById: searchById);
-    _connectAndAuth();
+    connectAndAuth();
     _serverSock!.sink.add(requestJson);
   }
 
@@ -164,6 +166,40 @@ class Network {
     }
   }
 
+  Future<void> waitUntilConnected() async {
+    Future.doWhile(() => (connected == false));
+  }
+
+  //UI-FACING MESSAGE SENDING COMMANDS
+
+  //Method: sendTextMessage
+  Future<void> sendTextMessage(String conversationID, String msgToSend) async {
+    if (!_isUiListening()) {
+      throw NetworkStreamListenerRequired();
+    }
+    if (_authInProgress) {
+      print("Authentication is already in progress, waiting...");
+      waitUntilConnected().then((data) {
+        print("Making the message!");
+        var requestJson = _constructSendTextMessageRequest(conversationID, msgToSend);
+        print(requestJson);
+        print("Sending the message now!");
+        _serverSock!.sink.add(requestJson);
+      });
+    }
+    else {
+      print("Authentication not started yet, starting...");
+      connectAndAuth().then((data) {
+        print("Making the message!");
+        var requestJson = _constructSendTextMessageRequest(conversationID, msgToSend);
+        print("Sending the message now!");
+        _serverSock!.sink.add(requestJson);
+      });
+    }
+    print("Exiting sendTestMessage()");
+  }
+
+
 
   //CLIENT STREAM HANDLER METHODS HERE
 
@@ -181,7 +217,7 @@ class Network {
       }
       else {
         _allowJunk = false;
-        await _connectAndAuth();
+        await connectAndAuth();
         connected = true;
         clientSock.add("To the UI: successfully connected and authenticated to server!");
       }
@@ -238,7 +274,7 @@ class Network {
     final channel = WebSocketChannel.connect(wsUrl);
     await channel.ready;
     _serverSock = channel;
-    connected = true;
+    //connected = true; Purposely leaving this alone since other methods should modify this variable.
   }
 
   //Method: _disconnect().
@@ -262,9 +298,11 @@ class Network {
   //connection to the specified server and attempts to authenticate.
   //Parameters: None, uses the object's _serverURL.
   //Returns: Nothing if successful, an exception if unsuccessful.
-  Future<bool> _connectAndAuth() async {
+  Future<bool> connectAndAuth() async {
     if (connected) return true; //If we're already connected, tell the caller and exit.
-
+    if (_authInProgress) return false; //Another copy of this method is trying to authenticate. Stop.
+    
+    _authInProgress = true;
     await _connect(_serverURL);
     
     //Generate and send a challenge BEFORE configuring the listener.
@@ -293,11 +331,13 @@ class Network {
     //First, check if we're registered.
     if (_userID == null) {
       print("Failed to register!");
+      _authInProgress = false;
       return false;
     }
     //Check if we have a token.
     if ((_tokenID == null) || (_tokenSecret == null)) {
       print("Failed to obtain authentication token!");
+      _authInProgress = false;
       return false;
     }
 
@@ -309,8 +349,10 @@ class Network {
         _handleServerResponse(msg);
       }
     );
+    _serverSock!.sink.add(_constructPingMsg(tokenAuth: true));
     print("Network is initialized and ready! :D");
     print(_userID);
+    _authInProgress = false;
     return true;
   }
 
@@ -417,8 +459,20 @@ Each of these handles a specific kind of message.
       print("Network._handleSearchResponse(): Received invalid response from server!");
       responseMsg['Successful'] = false;
     }
-    
+    //Finish this later.
   }
+
+  void _handleIncomingMsg(Map serverMsg) {
+    if (!_isValidIncomingMsg(serverMsg)) {
+      print("Received incoming message but it is invalid!");
+      return;
+    }
+    if (serverMsg['MessageType'].toString().toUpperCase() != 'TEXT') {
+      serverMsg['MessageData'] = base64Decode(serverMsg['MessageData']);
+    }
+    clientSock.sink.add(serverMsg);
+  }
+
 
 /*
 AUXILIARY FUNCTIONS
@@ -515,9 +569,58 @@ Can vary from data integrity checks to sub-functions.
     return true;
   }
 
+  bool _isValidIncomingMsg(Map responseData) {
+    const requiredKeys = [
+      'Command',
+      'OriginalReceiptTimestamp',
+      'SenderId',
+      'ConversationId',
+      'MessageType',
+      'MessageData'
+      ];
+    for (final rkey in requiredKeys) {
+      if (!responseData.containsKey(rkey)) {
+        print("Required key " + rkey + " is missing!");
+        return false;
+      }
+      if (responseData[rkey] is! String) {
+        print("Required key " + rkey + " does not have a String value!");
+        return false;
+      }
+    }
+
+    //Validate message type
+    const validMsgTypes = ['TEXT', 'IMAGE', 'VIDEO', 'FILE'];
+    if (!(validMsgTypes.contains(responseData['MessageType'].toString().toUpperCase()))) {
+      print("Invalid message type specified!");
+      return false;
+    }
+    return true;
+  }
+
   //JSON server message constructors.
   //Each of these takes its requested info, and constructs
   //a valid JSON message to send directly to the server.
+
+  String _constructPingMsg({bool tokenAuth = false}) {
+    final currentTime = DateTime.timestamp();
+    final pingMsg = {
+      'Command':'PING',
+      'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt(), //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    };
+    if (tokenAuth) {
+      if ((_userID != null) && (_tokenID != null) && _tokenSecret != null) {
+        pingMsg['UserId'] = _userID!;
+        pingMsg['TokenId'] = _tokenID!;
+        pingMsg['TokenSecret'] = base64Encode(_tokenSecret!);
+      }
+      else {
+        throw Exception("One or more required components for authentication is missing!");
+      }
+    }
+    const encoder = JsonEncoder();
+    return encoder.convert(pingMsg);
+  }
 
   String _constructLoginRequest(RSAPublicKey userPublicKey, String userID, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
@@ -589,6 +692,127 @@ Can vary from data integrity checks to sub-functions.
     }
     const encoder = JsonEncoder();
     return encoder.convert(connectRequest);
+  }
+
+  String _constructNewConversationRequest(List<String> recipientIDs, {String? operationID = null}) {
+    final currentTime = DateTime.timestamp();
+    const b64 = Base64Encoder();
+    final newConversationRequest = {
+      'Command':'NEWCONVERSATION',
+      'TokenId':_tokenID,
+      'TokenSecret': b64.convert(_tokenSecret!),
+      'UserId':_userID,
+      'RecipientIds':recipientIDs,
+      'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    };
+    if (operationID != null) {
+      newConversationRequest['OperationId'] = operationID;
+    }
+    const encoder = JsonEncoder();
+    return encoder.convert(newConversationRequest);
+  }
+
+  String _constructSendTextMessageRequest(String conversationID, String msgToSend, {String? operationID = null}) {
+    final currentTime = DateTime.timestamp();
+    const b64 = Base64Encoder();
+    final sendMessageRequest = {
+      'Command':'SENDMESSAGE',
+      'TokenId':_tokenID,
+      'TokenSecret': b64.convert(_tokenSecret!),
+      'UserId':_userID,
+      'ConversationId':conversationID,
+      'MessageType':'Text',
+      'MessageData':msgToSend,
+      'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    };
+    if (operationID != null) {
+      sendMessageRequest['OperationId'] = operationID;
+    }
+    const encoder = JsonEncoder();
+    return encoder.convert(sendMessageRequest);
+  }
+
+  String _constructSendImageMessageRequest(String conversationID, Uint8List imageBytes, {String? operationID = null}) {
+    final currentTime = DateTime.timestamp();
+    const b64 = Base64Encoder();
+    final sendMessageRequest = {
+      'Command':'SENDMESSAGE',
+      'TokenId':_tokenID,
+      'TokenSecret': b64.convert(_tokenSecret!),
+      'UserId':_userID,
+      'ConversationId':conversationID,
+      'MessageType':'Image',
+      'MessageData':b64.convert(imageBytes),
+      'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    };
+    if (operationID != null) {
+      sendMessageRequest['OperationId'] = operationID;
+    }
+    const encoder = JsonEncoder();
+    return encoder.convert(sendMessageRequest);
+  }
+
+  String _constructSendVideoMessageRequest(String conversationID, Uint8List videoBytes, {String? operationID = null}) {
+    final currentTime = DateTime.timestamp();
+    const b64 = Base64Encoder();
+    final sendMessageRequest = {
+      'Command':'SENDMESSAGE',
+      'TokenId':_tokenID,
+      'TokenSecret': b64.convert(_tokenSecret!),
+      'UserId':_userID,
+      'ConversationId':conversationID,
+      'MessageType':'Video',
+      'MessageData':b64.convert(videoBytes),
+      'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    };
+    if (operationID != null) {
+      sendMessageRequest['OperationId'] = operationID;
+    }
+    const encoder = JsonEncoder();
+    return encoder.convert(sendMessageRequest);
+  }
+
+  String _constructSendFileMessageRequest(String conversationID, Uint8List fileBytes, {String? operationID = null}) {
+    final currentTime = DateTime.timestamp();
+    const b64 = Base64Encoder();
+    final sendMessageRequest = {
+      'Command':'SENDMESSAGE',
+      'TokenId':_tokenID,
+      'TokenSecret': b64.convert(_tokenSecret!),
+      'UserId':_userID,
+      'ConversationId':conversationID,
+      'MessageType':'Video',
+      'MessageData':b64.convert(fileBytes),
+      'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    };
+    if (operationID != null) {
+      sendMessageRequest['OperationId'] = operationID;
+    }
+    const encoder = JsonEncoder();
+    return encoder.convert(sendMessageRequest);
+  }
+
+  String _constructUpdateProfileRequest(String newUserName, Uint8List newProfilePic, String newStatus, String newBio, {String? operationID = null}) {
+    final currentTime = DateTime.timestamp();
+    const b64 = Base64Encoder();
+    final updateProfileRequest = {
+      'Command':'UPDATEPROFILE',
+      'TokenId':_tokenID,
+      'TokenSecret': b64.convert(_tokenSecret!),
+      'UserId':_userID,
+      'NewProfile': {
+        'UserName':newUserName,
+        'UserProfilePic':b64.convert(newProfilePic),
+        'UserStatus':newStatus,
+        'UserBio':newBio,
+      },
+      'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    };
+    if (operationID != null) {
+      updateProfileRequest['OperationId'] = operationID;
+    }
+    const encoder = JsonEncoder();
+    return encoder.convert(updateProfileRequest);
   }
 
 }
