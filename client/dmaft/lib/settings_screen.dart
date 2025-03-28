@@ -175,6 +175,36 @@ class UsernameScreen extends StatefulWidget {
 }
 
 class _UsernameScreenState extends State<UsernameScreen> {
+
+  final TextEditingController _usernameController = TextEditingController();
+  final ClientDB database_service = ClientDB.instance;
+  bool saveChanges = false;
+
+  @override
+  void initState() {
+    _usernameController.addListener(_detectUsername);
+    _usernameController.text = widget.user.name;
+    super.initState();
+  }
+
+  // Need to fix
+  Future<void> _detectUsername() async {
+    setState(() {
+      print(saveChanges);
+      if (saveChanges) {
+        String newUsername = _usernameController.text;
+        print(widget.user.name);
+        widget.user.name = newUsername;
+        print(widget.user.name);
+        database_service.modifyUser(widget.user);
+        saveChanges = false;
+      }
+      if (_usernameController.text != widget.user.name) {
+
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -186,9 +216,28 @@ class _UsernameScreenState extends State<UsernameScreen> {
       ),
 
       // Replace with functionality that changes username
-      body: Center(
-        child: Text(widget.user.name),
+      body: Column(
+        children: [
+          TextField(
+            controller: _usernameController,
+            style: const TextStyle(color: Colors.black),
+            cursorColor: Colors.black,
+            autofocus: true,
+          ),
+          TextButton(
+            child: Text('Save'),
+            onPressed: () {
+              setState(() {
+                saveChanges = true;
+              });
+            },
+          ),
+        ],
       ),
+      
+      
+      
+      
 
     );
   }
@@ -207,6 +256,36 @@ class BioScreen extends StatefulWidget {
 }
 
 class _BioScreenState extends State<BioScreen> {
+
+  final TextEditingController _bioController = TextEditingController();
+  final ClientDB database_service = ClientDB.instance;
+  bool saveChanges = false;
+
+  @override
+  void initState() {
+    _bioController.addListener(_detectBio);
+    _bioController.text = widget.user.bio;
+    super.initState();
+  }
+
+  // Need to fix
+  Future<void> _detectBio() async {
+    setState(() {
+      print(saveChanges);
+      if (saveChanges) {
+        String newBio = _bioController.text;
+        print(widget.user.bio);
+        widget.user.bio = newBio;
+        print(widget.user.bio);
+        database_service.modifyUser(widget.user);
+        saveChanges = false;
+      }
+      if (_bioController.text != widget.user.bio) {
+
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -218,8 +297,23 @@ class _BioScreenState extends State<BioScreen> {
       ),
 
       // Replace with functionality that changes bio
-      body: Center(
-        child: Text(widget.user.bio),
+      body: Column(
+        children: [
+          TextField(
+            controller: _bioController,
+            style: const TextStyle(color: Colors.black),
+            cursorColor: Colors.black,
+            autofocus: true,
+          ),
+          TextButton(
+            child: Text('Save'),
+            onPressed: () {
+              setState(() {
+                saveChanges = true;
+              });
+            },
+          ),
+        ],
       ),
 
     );
@@ -239,6 +333,36 @@ class PronounsScreen extends StatefulWidget {
 }
 
 class _PronounsScreenState extends State<PronounsScreen> {
+
+  final TextEditingController _pronounsController = TextEditingController();
+  final ClientDB database_service = ClientDB.instance;
+  bool saveChanges = false;
+
+  @override
+  void initState() {
+    _pronounsController.addListener(_detectPronouns);
+    _pronounsController.text = widget.user.pronouns;
+    super.initState();
+  }
+
+  // Need to fix
+  Future<void> _detectPronouns() async {
+    setState(() {
+      print(saveChanges);
+      if (saveChanges) {
+        String newPronouns = _pronounsController.text;
+        print(widget.user.pronouns);
+        widget.user.pronouns = newPronouns;
+        print(widget.user.pronouns);
+        database_service.modifyUser(widget.user);
+        saveChanges = false;
+      }
+      if (_pronounsController.text != widget.user.pronouns) {
+
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -250,8 +374,24 @@ class _PronounsScreenState extends State<PronounsScreen> {
       ),
 
       // Replace with functionality that changes pfp
-      body: Center(
-        child: Text(widget.user.pronouns),
+      body: Column(
+        children: [
+          TextField(
+            controller: _pronounsController,
+            style: const TextStyle(color: Colors.black),
+            cursorColor: Colors.black,
+            autofocus: true,
+          ),
+          TextButton(
+            child: Text('Save'),
+            onPressed: () {
+              setState(() {
+                saveChanges = true;
+                
+              });
+            },
+          ),
+        ],
       ),
 
     );

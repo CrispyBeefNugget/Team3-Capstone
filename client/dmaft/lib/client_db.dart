@@ -259,9 +259,10 @@ class ClientDB{
       $_contactsNameName = ?,
       $_contactsPronounsName = ?, 
       $_contactsBioName = ?,
+      $_contactsPictureName = ?,
       $_contactsLastModifiedName = ?
       """,
-      [user.id, user.name, user.pronouns, user.bio, user.lastModified]
+      [user.id, user.name, user.pronouns, user.bio, user.pic, user.lastModified]
     );
   }
 
@@ -346,7 +347,7 @@ class ClientDB{
   //Method: modifyContact.
   //Parameters: Updated contact object.
   //Returns: Nothing.
-  //Example Usage: "clientdb1.modifyContact(<a_Contact_object>);".
+  //Example Usage: "await clientdb1.modifyContact(<a_Contact_object>);".
   //Description: Modify a contact entry in the database using the userID. Changes all fields except userID to match the Contact object's properties. Does 
   //  nothing if no entry exists with the given userID.
   Future<void> modifyContact(Contact contact) async{
@@ -358,12 +359,13 @@ class ClientDB{
       $_contactsNameName = ?,
       $_contactsPronounsName = ?, 
       $_contactsBioName = ?,
+      $_contactsPictureName = ?,
       $_contactsLastModifiedName = ?
       
       WHERE 
       $_contactsIDName = ?
       """,
-      [contact.name, contact.pronouns, contact.bio, contact.lastModified, contact.id]
+      [contact.name, contact.pronouns, contact.bio, contact.pic, contact.lastModified, contact.id]
     );
   }
 
@@ -372,7 +374,7 @@ class ClientDB{
   //Method: delContact.
   //Parameters: Contact object corresponding to the database entry to be deleted.
   //Returns: Nothing.
-  //Example Usage: "clientdb1.delContact(<a_Contact_object>);".
+  //Example Usage: "await clientdb1.delContact(<a_Contact_object>);".
   //Description: Remove a contact entry from the database using the given Contact object's userID. Also deletes any conversations that included this contact! 
   //  Will do nothing if the given contact isn't in the database.
   Future<void> delContact(Contact contact) async{
@@ -393,6 +395,24 @@ class ClientDB{
     """,
     [contact.id]
     );
+  }
+
+
+
+  //Method: userIDNameMap.
+  //Parameters: List of contacts whose IDs and names you want in a map.
+  //Returns: A Map of userIDs to userNames for the given contacts.
+  //Example Usage: "ClientDB.userIDNameMap(<a_list_of_Contact_objects>);".
+  //Description: To avoid asynchronous calls in the middle of UI operations, this method can be called early on and the resulting Map can be used to access
+  //  usernames when needed. Pass a list of contacts, and this method will return a Map with the userIDs as the keys and the userNames as the values. 
+  //  NOT AN ASYNC METHOD.
+  static Map<String, String> userIDNameMap(List<Contact> contacts){
+    //For each given userID, find the user's name.
+    Map<String, String> idAndName = {};
+    for(int i = 0; i < contacts.length; i++){
+      idAndName[contacts[i].id] = contacts[i].name;
+    }
+    return idAndName;
   }
 
 
@@ -562,7 +582,7 @@ class ClientDB{
       }
       firstFlag = false;
       //Add a search for the convoMember's id.
-      query = "$query $_contactsIDName = ${convo.convoMembers[i]}";
+      query = "$query $_contactsIDName = '${convo.convoMembers[i]}'";
     }
     //Fetch the Contacts using the constructed query.
     final db = await database;
@@ -706,25 +726,24 @@ class ClientDB{
 
 
   //Method: delOlderMsgLogs.
-  //Parameters: DateTime object to serve as cutoff point for messages.
+  //Parameters: The number of days the user wants their messages saved for.
   //Returns: Nothing.
-  //Example Usage: "clientdb1.delOlderMsgLogs(DateTime(11,3,2025));" would delete any message logs older than March 11, 2025 00:00:00, so everything from march
-  //  11 back would be deleted.
-  //Description: Remove all message logs in the database older than the given date (inclusive). Date should be provided as a dart DateTime object using the
-  //  local time zone.
-  Future<void> delOlderMsgLogs(DateTime date) async{
+  //Example Usage: "await clientdb1.delOlderMsgLogs(10);" would delete any message logs older than 10 days.
+  //Description: Remove all message logs in the database older than the given number of days from the current date.
+  Future<void> delOlderMsgLogs(int numDays) async{
+    //Calculate the cutoff date for messages.
+    DateTime cutOffDate = DateTime.now().subtract(Duration(days: numDays));
+    //Fetch all conversations.
     final db = await database;
-    //Fetch all conversations and use their convoIDs in message retrieval.
     List<Conversation> convos = await getAllConvos(); 
     //For each conversation's table, delete any messages with dates older than the specified one.
     for(int i = 0; i < convos.length; i++){
-      print(convos[i].convoMembers);
       await db.rawQuery(
       """
       DELETE FROM "${convos[i].convoID}" 
-      WHERE $_msglogsReceivedTimeName >= ?
+      WHERE $_msglogsReceivedTimeName < ?
       """,
-      [date.toString()]
+      [cutOffDate.toString()]
       );
     }
   }

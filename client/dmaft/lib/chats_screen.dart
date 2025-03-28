@@ -2,6 +2,7 @@ import 'package:dmaft/chat_test_list.dart';
 import 'package:flutter/material.dart';
 
 import 'package:dmaft/client_db.dart';
+import 'dart:convert';
 
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
@@ -17,9 +18,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
   final ClientDB database_service = ClientDB.instance;
 
   ({List<Conversation> list, List<String> names}) chat_list = (list: [], names: []);
+  ({List<Conversation> list, List<String> names}) _filteredList = (list: [], names: []);
 
-  List<Conversation> _filteredList = [];
   late List<bool> _selected;
+
+  Map<String, Map<String, String>> userIDsToNames = {}; //Holds the userIDs and userNames for participants in each conversation.
 
   List<List<Contact>> chat_names = []; // Added another list to essentially substitute convoIDs with sender names.
                                        // Want to remove this and replace with a function that returns sender names
@@ -38,7 +41,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
         chat_list = (list: response.$1, names: response.$2);
       });
       initializeSelection();
-      _filteredList = chat_list.list;
+      _filteredList = chat_list;
     });
     _searchController.addListener(_performSearch);
     super.initState();
@@ -56,6 +59,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
         temp = "$temp   ${convo_members[j].name}";
       }
       conversation_names.add(temp);
+      //Also update the userIDToName list with convo member data and the user's data.
+      Contact user = await database_service.getUser();
+      convo_members.add(user);
+      Map<String, String> temp2 = ClientDB.userIDNameMap(convo_members);
+      userIDsToNames[db_conversations[i].convoID] = temp2;
     }
     return (db_conversations, conversation_names); //Returns a Record
   }
@@ -101,8 +109,27 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   // ----------------------------------------------------------------------------------------------------
 
+  Future<List<MsgLog>> get_chat_messages(conversation_id) async {
+    List<MsgLog> messages = await database_service.getMsgLogs(conversation_id);
+    return messages;
+  }
+
+  Future<void> delete_conversation(Conversation conversation) async {
+    await database_service.delConvo(conversation);
+  }
+
+  void refresh_conversations() {
+    get_chat_info().then((response) {
+      setState(() {
+        chat_list = (list: response.$1, names: response.$2);
+      });
+      initializeSelection();
+      _filteredList = chat_list;
+    });
+  }
+
   void initializeSelection() {
-    _selected = List<bool>.generate(chat_list.list.length, (_) => false);
+    _selected = List<bool>.generate(chat_list.names.length, (_) => false);
   }
 
   void _toggle(int index) {
@@ -124,15 +151,26 @@ class _ChatsScreenState extends State<ChatsScreen> {
       }
       if (_searchController.text != '') {
         isSearchingMode = true;
-        _filteredList = chat_list.list
-          .where((element) => element.convoID
-            .toLowerCase()
-            .contains(_searchController.text.toLowerCase()))
-          .toList();
+
+        ({List<Conversation> list, List<String> names}) temp_list = (list: [], names: []);
+        for (int i = 0; i < chat_list.list.length; i++) {
+          if (chat_list.names[i].toLowerCase().contains(_searchController.text.toLowerCase())) {
+            temp_list.list.add(chat_list.list[i]);
+            temp_list.names.add(chat_list.names[i]);
+          }
+        }
+        _filteredList = temp_list;
+
+
+        // _filteredList = chat_list
+        //   .where((element_1, element_2) => element_2
+        //     .toLowerCase()
+        //     .contains(_searchController.text.toLowerCase()))
+        //   .toList();
       }
       else {
         isSearchingMode = false;
-        _filteredList = chat_list.list;
+        _filteredList = chat_list;
       }
     });
   }
@@ -200,14 +238,18 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   if (isSelectionMode)
                     IconButton(
                       onPressed: () {
-                        // for (int i = 0; i < testList.length; i++) {
-                        //   if (_selected[i] == true) {
-                        //     testList[i] = '';
-                        //   }
-                        // }
-                        // testList.removeWhere((String chat) => chat == '');
-                        // isSelectionMode = false; // Need to implement list refreshing and properly close out of selection mode.
-                        // Insert delete function here.
+                        
+                        for (int i = 0; i < chat_list.list.length; i++) {
+                          if (_selected[i] == true) {
+                            delete_conversation(chat_list.list[i]);
+                          }
+                        }
+                        refresh_conversations();
+                        setState(() {
+                          isSelectionMode = false;
+                          initializeSelection();
+                        });
+
                       },
                       icon: Icon(Icons.delete)
                     ),
@@ -231,11 +273,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
               body:
                 isSearchingMode
                 ? ListView.builder(
-                  itemCount: _filteredList.length,
+                  itemCount: _filteredList.names.length,
                   itemBuilder: (context, index) => ListTile(
                     leading: Icon(Icons.person),
                     title: Text(
-                      _filteredList[index].convoID,
+                      _filteredList.names[index],
                       //chat_names[index][0].name, // Ideally I don't want to do this because as soon as you search the names are off.
                       //resolve_sender_name2(_filteredList[index].convoID),
                       //resolve_sender_name(_filteredList[index].convoID), // This is what I'm trying to achieve here.
@@ -246,12 +288,23 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => Scaffold(
                           appBar: AppBar(
-                            title: Text(_filteredList[index].convoID),
+                            title: Text(_filteredList.names[index]),
                             //title: Text(chat_names[index][0].name), // Same as above.
                             //title: Text(resolve_sender_name2(_filteredList[index].convoID)),
                             centerTitle: true,
                             backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                             foregroundColor: Colors.white,
+                            actions: [
+                                IconButton(
+                                  onPressed: () {
+                                    delete_conversation(_filteredList.list[index]);
+                                    refresh_conversations();
+                                    Navigator.pop(context);
+                                    _searchController.text = '';
+                                  },
+                                  icon: Icon(Icons.delete),
+                                ),
+                              ],
                           ),
                           body: Column(
                             children: [
@@ -260,12 +313,43 @@ class _ChatsScreenState extends State<ChatsScreen> {
                               ),
 
 
+                              FutureBuilder(
+                                future: get_chat_messages(_filteredList.list[index].convoID),
+                                builder: (BuildContext context2, AsyncSnapshot snapshot2) {
+                                  if (snapshot2.hasData) {
 
+                                    List<MsgLog> messages = snapshot2.data;
+                                    return Expanded(
+                                      child: SizedBox(
+                                        child: ListView.builder(
+                                          itemCount: messages.length,
+                                          itemBuilder: (context3, index2) => ListTile(
+                                            title: Text(utf8.decode(messages[index2].message)),
+                                            subtitle: Text(messages[index2].rcvTime),
+                                            titleAlignment: ListTileTitleAlignment.center,
+                                            
+                                          ),
+                                        ),
+                                      ),
+                                      
+                                    );
 
-                              
-                              Center(
-                                child: Text(_filteredList[index].lastModified),
-                              )
+                                  }
+                                  else {
+                                    return Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
+                                },
+                              ),
+
+                              TextField(
+                                decoration: const InputDecoration(
+                                  hintText: 'Type Message',
+                                ),
+                                style: const TextStyle(color: Colors.black),
+                                cursorColor: Colors.black,
+                              ),
                             ],
                           )
                         ))
@@ -305,17 +389,87 @@ class _ChatsScreenState extends State<ChatsScreen> {
                               centerTitle: true,
                               backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                               foregroundColor: Colors.white,
+                              actions: [
+                                IconButton(
+                                  onPressed: () {
+                                    delete_conversation(chat_list.list[index]);
+                                    refresh_conversations();
+                                    Navigator.pop(context);
+                                  },
+                                  icon: Icon(Icons.delete),
+                                ),
+                              ],
                             ),
                             body: Column(
                               children: [
                                 Padding(
                                   padding: EdgeInsets.all(10.0)
                                 ),
-                                Center(
-                                  child: Text(chat_list.list[index].lastModified),
-                                )
+
+
+                                FutureBuilder(
+                                  future: get_chat_messages(chat_list.list[index].convoID),
+                                  builder: (BuildContext context2, AsyncSnapshot snapshot2) {
+                                    if (snapshot2.hasData) {
+
+                                      List<MsgLog> messages = snapshot2.data;
+                                      return Expanded(
+                                        child: SizedBox(
+                                          child: ListView.builder(
+                                            itemCount: messages.length,
+                                            itemBuilder: (context3, index2) => ListTile(
+                                              title: Text(utf8.decode(messages[index2].message)),
+                                              subtitle: Text(messages[index2].rcvTime),
+                                              titleAlignment: ListTileTitleAlignment.center,
+                                              
+                                            ),
+                                          ),
+                                        ),
+                                          
+
+
+
+                                          // ListTile(
+                                          //   title: Text(utf8.decode(messages[0].message)),
+                                          //   titleAlignment: ListTileTitleAlignment.center,
+                                          // ),
+                                          // ListTile(
+                                          //   title: Text(utf8.decode(messages[1].message)),
+                                          //   titleAlignment: ListTileTitleAlignment.center,
+                                          // ),
+                                        
+                                      );
+
+                                      // return ListView.builder(                                     // Left off here
+                                      //   itemCount: messages.length,
+                                      //   itemBuilder: (_, index2) => ListTile(
+                                      //     title: Text(utf8.decode(messages[index2].message)),
+                                      //     trailing: Text(messages[index2].rcvTime),
+                                      //   ),
+                                      // );
+                                    }
+                                    else {
+                                      return Center(
+                                        child: CircularProgressIndicator(),
+                                      );
+                                    }
+                                  },
+                                ),
+
+
+
+                                // Center(
+                                //   child: Text(chat_list.list[index]),
+                                // ),
+
+
+                                TextField(
+                                  decoration: const InputDecoration(
+                                    hintText: 'Type Message',
+                                  ),
+                                ),
                               ],
-                            )
+                            ),
                           ))
                         )
                       }
