@@ -132,15 +132,6 @@ class Network {
     return (_serverSock != null);
   }
 
-  Future<void> sendUserSearchRequest(String searchTerm, {bool searchById = false}) async {
-    if (!_isUiListening()) {
-      throw NetworkStreamListenerRequired();
-    }
-    var requestJson = _constructSearchUserRequest(searchTerm, searchById: searchById);
-    connectAndAuth();
-    _serverSock!.sink.add(requestJson);
-  }
-
   //GENERAL INTERNAL USE METHODS HERE
 
   //Method: operationSuccess
@@ -173,7 +164,7 @@ class Network {
   //UI-FACING MESSAGE SENDING COMMANDS
 
   //Method: sendTextMessage
-  Future<void> sendTextMessage(String conversationID, String msgToSend) async {
+  Future<void> sendTextMessage(String conversationID, String msgToSend, String msgID) async {
     if (!_isUiListening()) {
       throw NetworkStreamListenerRequired();
     }
@@ -181,7 +172,7 @@ class Network {
       print("Authentication is already in progress, waiting...");
       waitUntilConnected().then((data) {
         print("Making the message!");
-        var requestJson = _constructSendTextMessageRequest(conversationID, msgToSend);
+        var requestJson = _constructSendTextMessageRequest(conversationID, msgToSend, msgID);
         print(requestJson);
         print("Sending the message now!");
         _serverSock!.sink.add(requestJson);
@@ -191,12 +182,65 @@ class Network {
       print("Authentication not started yet, starting...");
       connectAndAuth().then((data) {
         print("Making the message!");
-        var requestJson = _constructSendTextMessageRequest(conversationID, msgToSend);
+        var requestJson = _constructSendTextMessageRequest(conversationID, msgToSend, msgID);
         print("Sending the message now!");
         _serverSock!.sink.add(requestJson);
       });
     }
-    print("Exiting sendTestMessage()");
+  }
+
+  //Method: createNewConversation
+  Future<void> createNewConversation(List<String> recipientIDs) async {
+    if (!_isUiListening()) {
+      throw NetworkStreamListenerRequired();
+    }
+    if (_authInProgress) {
+      print("Authentication is already in progress, waiting...");
+      waitUntilConnected().then((data) {
+        print("Making the new conversation request!");
+        var requestJson = _constructNewConversationRequest(recipientIDs);
+        print(requestJson);
+        print("Sending the new conversation request now!");
+        _serverSock!.sink.add(requestJson);
+      });
+    }
+    else {
+      print("Authentication not started yet, starting...");
+      connectAndAuth().then((data) {
+        print("Making the new conversation request!");
+        var requestJson = _constructNewConversationRequest(recipientIDs);
+        print(requestJson);
+        print("Sending the new conversation request now!");
+        _serverSock!.sink.add(requestJson);
+      });
+    }
+  }
+
+  //Method: searchServerUsers
+  Future<void> searchServerUsers(String nameOrID, bool searchByID) async {
+    if (!_isUiListening()) {
+      throw NetworkStreamListenerRequired();
+    }
+    if (_authInProgress) {
+      print("Authentication is already in progress, waiting...");
+      waitUntilConnected().then((data) {
+        print("Making the user search request!");
+        var requestJson = _constructSearchUserRequest(nameOrID, searchById: searchByID);
+        print(requestJson);
+        print("Sending the user search request now!");
+        _serverSock!.sink.add(requestJson);
+      });
+    }
+    else {
+      print("Authentication not started yet, starting...");
+      connectAndAuth().then((data) {
+        print("Making the user search request!");
+        var requestJson = _constructSearchUserRequest(nameOrID, searchById: searchByID);
+        print(requestJson);
+        print("Sending the user search request now!");
+        _serverSock!.sink.add(requestJson);
+      });
+    }
   }
 
 
@@ -395,6 +439,9 @@ class Network {
         print("Process complete.");
         print('Token ID: ' + _tokenID!);
         print('User ID:' + _userID!);
+
+      case 'INCOMINGMESSAGE':
+        return _handleIncomingMsg(parsedMsg);
     }
   }
 
@@ -469,6 +516,14 @@ Each of these handles a specific kind of message.
     }
     if (serverMsg['MessageType'].toString().toUpperCase() != 'TEXT') {
       serverMsg['MessageData'] = base64Decode(serverMsg['MessageData']);
+    }
+    clientSock.sink.add(serverMsg);
+  }
+
+  void _handleNewConvoMsg(Map serverMsg) {
+    if (!_isValidNewConvoMsg(serverMsg)) {
+      print("Received new conversation message but it is invalid.");
+      return;
     }
     clientSock.sink.add(serverMsg);
   }
@@ -598,6 +653,40 @@ Can vary from data integrity checks to sub-functions.
     return true;
   }
 
+  bool _isValidNewConvoMsg(Map responseData) {
+    const requiredKeys = [
+      'Command',
+      'OriginalReceiptTimestamp',
+      'ConversationId',
+      'CreatorId',
+      'Members',
+      ];
+    for (final rkey in requiredKeys) {
+      if (!responseData.containsKey(rkey)) {
+        print("Required key " + rkey + " is missing!");
+        return false;
+      }
+      if (responseData[rkey] is! String) {
+        print("Required key " + rkey + " does not have a String value!");
+        return false;
+      }
+    }
+
+    //Ensure Members is a list of strings
+    if (responseData['Members'] is! List) {
+      print("Members data isn't structured as a List! Aborting.");
+      return false;
+    }
+
+    for (final member in responseData['Members']) {
+      if (member is! String) {
+        print("Detected a non-String member inside the conversationMembers list! Aborting.");
+        return false;
+      }
+    }
+    return true;
+  }
+
   //JSON server message constructors.
   //Each of these takes its requested info, and constructs
   //a valid JSON message to send directly to the server.
@@ -712,7 +801,7 @@ Can vary from data integrity checks to sub-functions.
     return encoder.convert(newConversationRequest);
   }
 
-  String _constructSendTextMessageRequest(String conversationID, String msgToSend, {String? operationID = null}) {
+  String _constructSendTextMessageRequest(String conversationID, String msgToSend, String msgID, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     const b64 = Base64Encoder();
     final sendMessageRequest = {
@@ -723,6 +812,7 @@ Can vary from data integrity checks to sub-functions.
       'ConversationId':conversationID,
       'MessageType':'Text',
       'MessageData':msgToSend,
+      'MessageId':msgID,
       'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
     };
     if (operationID != null) {
@@ -732,7 +822,7 @@ Can vary from data integrity checks to sub-functions.
     return encoder.convert(sendMessageRequest);
   }
 
-  String _constructSendImageMessageRequest(String conversationID, Uint8List imageBytes, {String? operationID = null}) {
+  String _constructSendImageMessageRequest(String conversationID, Uint8List imageBytes, String msgID, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     const b64 = Base64Encoder();
     final sendMessageRequest = {
@@ -743,6 +833,7 @@ Can vary from data integrity checks to sub-functions.
       'ConversationId':conversationID,
       'MessageType':'Image',
       'MessageData':b64.convert(imageBytes),
+      'MessageId':msgID,
       'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
     };
     if (operationID != null) {
@@ -752,7 +843,7 @@ Can vary from data integrity checks to sub-functions.
     return encoder.convert(sendMessageRequest);
   }
 
-  String _constructSendVideoMessageRequest(String conversationID, Uint8List videoBytes, {String? operationID = null}) {
+  String _constructSendVideoMessageRequest(String conversationID, Uint8List videoBytes, String msgID, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     const b64 = Base64Encoder();
     final sendMessageRequest = {
@@ -763,6 +854,7 @@ Can vary from data integrity checks to sub-functions.
       'ConversationId':conversationID,
       'MessageType':'Video',
       'MessageData':b64.convert(videoBytes),
+      'MessageId':msgID,
       'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
     };
     if (operationID != null) {
@@ -772,7 +864,7 @@ Can vary from data integrity checks to sub-functions.
     return encoder.convert(sendMessageRequest);
   }
 
-  String _constructSendFileMessageRequest(String conversationID, Uint8List fileBytes, {String? operationID = null}) {
+  String _constructSendFileMessageRequest(String conversationID, Uint8List fileBytes, String msgID, {String? operationID = null}) {
     final currentTime = DateTime.timestamp();
     const b64 = Base64Encoder();
     final sendMessageRequest = {
@@ -783,6 +875,7 @@ Can vary from data integrity checks to sub-functions.
       'ConversationId':conversationID,
       'MessageType':'Video',
       'MessageData':b64.convert(fileBytes),
+      'MessageId':msgID,
       'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
     };
     if (operationID != null) {

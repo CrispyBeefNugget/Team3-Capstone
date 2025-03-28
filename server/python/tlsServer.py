@@ -349,7 +349,10 @@ def handleRequest(clientRequest, websocket: websockets.asyncio.server.ServerConn
 
         #Client's token is validated. Allow remaining access.
         if command == 'SEARCHUSERS':
-            print("Detected SEARCHUSERS request.")
+            return handleSearchUsersMsg(clientRequest)
+
+        elif command == 'NEWCONVERSATION':
+            return handleNewConvoRequest(clientRequest)
 
         elif command == 'SENDMESSAGE':
             return handleSendMessageRequest(clientRequest)

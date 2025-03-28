@@ -569,8 +569,31 @@ def removeUserFromConversation(*, connection: sqlite3.Connection, conversationID
     #4. Remove the conversation ID from the RegisteredUsers table.
     #5. Notify everyone.
     
-    pass
+    raise NotImplementedError
 
+    #First, ensure the conversation exists.
+    try:
+        if not doesConversationExist(connection=connection, conversationID=conversationID):
+            print("dmaftServerDB.removeUserFromConversation(): The specified conversation doesn't exist!")
+            return False
+    except:
+        print("dmaftServerDB.removeUserFromConversation(): Failed to search the conversations table!")
+        return False
+    
+    #Now, ensure the user exists.
+    try:
+        if not doesUserExist(connection=connection, userID=userID):
+            print("dmaftServerDB.removeUserFromConversation(): The specified user doesn't exist!")
+    except:
+        print("dmaftServerDB.removeUserFromConversation(): Failed to search the registered users table!")
+        return False
+    
+    #Remove the user from the conversations table first.
+    #This ensures that any future messages won't be routed to this user.
+    #To do this: get the conversation, parse and modify the list, then serialize it and save the modified result.
+    conversations = getConversationByID(connection=connection, conversationID=conversationID)
+    if conversations is None:
+        return 
 
 #MAILBOX DATA
 
