@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:async';
+import 'dart:math';
 
 
 
@@ -746,5 +747,40 @@ class ClientDB{
       [cutOffDate.toString()]
       );
     }
+  }
+
+
+
+  //Method: generateMsgID.
+  //Parameters: The convoID of the conversation the message will be a part of.
+  //Returns: A unique, unused msgID string to be used in a MsgLog.
+  //Example Usage: "String newMsgID = await clientdb1.generateMsgID(<a_conversation_id>);".
+  //Description: Generates a random Message ID string and ensures the ID does not already exist within the given conversation.
+  Future<String> generateMsgID(String convoID) async{
+    String allowedChars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"; //Pool of allowed characters the ID will draw from.
+    int idLength = 16; //Length each ID will be.
+    //Fetch all message logs for the given conversation.
+    List<MsgLog> messages = await getMsgLogs(convoID);
+    //Until a suitable ID is generated, repeat this.
+    String newID = "";
+    bool suitableID = false;
+    while(suitableID == false){
+      //Generate an ID.
+      var random = Random.secure();
+      for(int i = 0; i < idLength; i++){ 
+        newID += allowedChars[random.nextInt(allowedChars.length - 1)];
+      }
+      //Check if the ID exists in the conversation already.
+      suitableID = true;
+      for(int i = 0; i < messages.length; i++){
+        //If any message is found to have this ID, immediately stop and restart the while loop to make a new one to try.
+        if(newID == messages[i].msgID){
+          suitableID = false;
+          newID = "";
+          break;
+        }
+      }
+    }
+    return newID;
   }
 }
