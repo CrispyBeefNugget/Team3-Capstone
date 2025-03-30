@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:dmaft/contacts_screen.dart';
 import 'package:dmaft/chats_screen.dart';
 import 'package:dmaft/settings_screen.dart';
-
 import 'package:dmaft/client_db.dart';
 
 class AppScreen extends StatefulWidget {
@@ -19,7 +18,7 @@ class _AppScreenState extends State<AppScreen> {
 
   late int unread;
 
-  int myIndex = 1; // Default page on app startup.
+  int myIndex = 1; // Default page on app startup (Chats Screen).
   List<Widget> widgetList = const [
     Text(
       'Contacts',
@@ -30,7 +29,7 @@ class _AppScreenState extends State<AppScreen> {
     ),
 
     Text(
-      'Chats',
+      'Conversations',
       style: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.bold,
@@ -46,15 +45,15 @@ class _AppScreenState extends State<AppScreen> {
     ),
   ];
 
-  final ClientDB database_service = ClientDB.instance;
+  final ClientDB databaseService = ClientDB.instance;
   late Contact user;
 
   @override
   void initState() {
-    get_user().then((response) {
+    getUser().then((response) {
       user = response;
     });
-    get_message_count().then((response) {
+    getMessageCount().then((response) {
       unread = response;
     });
     super.initState();
@@ -63,7 +62,7 @@ class _AppScreenState extends State<AppScreen> {
 
   // void _incrementCounter() async {
   //   while (true) {
-  //     await Future.delayed(Duration(seconds: 5));
+  //     await Future.delayed(Duration(seconds: 5)); // Might use as inspiration to update the notification counter.
   //     ChatTestList.addToList('Test Test');
   //     setState(() {
   //       unread = ChatTestList.getSize();
@@ -71,14 +70,16 @@ class _AppScreenState extends State<AppScreen> {
   //   }
   // }
 
-  Future<Contact> get_user() async {
-    var current_user = await database_service.getUser();
-    return current_user;
+  // Returns the contact information of the current user.
+  Future<Contact> getUser() async {
+    var currentUser = await databaseService.getUser();
+    return currentUser;
   }
 
-  Future<int> get_message_count() async {
-    List<Conversation> db_conversations = await database_service.getAllConvos();
-    return db_conversations.length;
+  // Returns the number of messages that the user has. This will be changed to the number of unread messages (need to differentiate between read and unread messages).
+  Future<int> getMessageCount() async {
+    List<Conversation> dbConversations = await databaseService.getAllConvos();
+    return dbConversations.length;
   }
 
   @override
@@ -88,10 +89,12 @@ class _AppScreenState extends State<AppScreen> {
 
   @override
   Widget build(BuildContext context) {
+
     final ThemeData theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: widgetList[myIndex],
+        title: widgetList[myIndex], // Title changes based on which tab the user is on.
         backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
         centerTitle: true,
         foregroundColor: Colors.white,
@@ -100,8 +103,9 @@ class _AppScreenState extends State<AppScreen> {
           (myIndex == 1)
           ? IconButton(
               onPressed: () {
-                Navigator.of(context).push(
 
+                // Opens a new page that allows for the adding of new users to message.
+                Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => Scaffold(
                     appBar: AppBar(
                       title: Text('New Conversation'),
@@ -109,29 +113,34 @@ class _AppScreenState extends State<AppScreen> {
                       backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                       foregroundColor: Colors.white,
                     ),
-                    body: TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Search User',
-                      ),
+                    body: Column(
+                      children: [
+                        TextField(
+                          decoration: const InputDecoration(
+                            hintText: 'Search User',
+                          ),
+                        ),
+
+                        // Insert FutureBuilder + ListBuilder here that queries the network for users based on username.
+
+                      ],
                     ),
-
-                  ))
-
+                  )),
                 );
 
-
               },
-              icon: Icon(Icons.add)
+              icon: const Icon(Icons.add),
           )
-          : const SizedBox(),
+          : const SizedBox(), // Only the Chats Screen while have the add button.
         actions: <Widget>[
           IconButton(
             onPressed: () {
 
+              // Shows the details of the user.
               showDialog<String>(
                 context: context,
                 builder: (BuildContext context) => FutureBuilder(
-                  future: get_user(),
+                  future: getUser(),
                   builder: (BuildContext context, AsyncSnapshot snapshot) {
                     if (snapshot.hasData) {
                       return AlertDialog(
@@ -170,23 +179,17 @@ class _AppScreenState extends State<AppScreen> {
                     }
                   }
                 )
-              );
-                
-                
-                
-                
+              );  
 
             },
-            icon: const Icon(
-              Icons.person,
-            ),
+            icon: const Icon(Icons.person),
           ),
         ],
       ),
       
+      // Body of the app screen changes depending on which tab the user has selected.
       body: <Widget>[
         ContactsScreen(),
-        // ContactsTest(),
         ChatsScreen(),
         SettingsScreen(),
       ][myIndex],
@@ -201,16 +204,16 @@ class _AppScreenState extends State<AppScreen> {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         selectedIndex: myIndex,
         destinations: <Widget>[
-          NavigationDestination(
-            icon: Icon(
-              Icons.contact_page,
-            ),
+
+          NavigationDestination( // Contacts tab.
+            icon: Icon(Icons.contact_page),
             label: 'Contacts',
           ),
-          NavigationDestination(
+
+          NavigationDestination( // Conversations tab.
             icon: Badge(
               label: FutureBuilder(
-                future: get_message_count(),
+                future: getMessageCount(),
                 builder: (BuildContext context, AsyncSnapshot snapshot) {
                   if (snapshot.hasData) {
                     return Text('$unread');
@@ -220,26 +223,25 @@ class _AppScreenState extends State<AppScreen> {
                   }
                 },
               ),             
-              // label: Text('$unread'), // unread messages
               child: Icon(Icons.message_rounded),
             ),
-            label: 'Chats',
+            label: 'Conversations',
           ),
-          NavigationDestination(
+
+          NavigationDestination( // Settings tab.
             icon: Icon(
               Icons.settings,
             ),
             label: 'Settings',
           ),
+
         ],
       ),
-      
     );
   }
 }
 
-// class ChatsScreenController extends ChangeNotifier {
+// class ChatsScreenController extends ChangeNotifier { // Might need change notifier for updating the unread count.
 //   List<String> _testList = ChatTestList.getList();
 
 // }
-

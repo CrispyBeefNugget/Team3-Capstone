@@ -13,13 +13,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
 
-  final ClientDB database_service = ClientDB.instance;
+  final ClientDB databaseService = ClientDB.instance;
 
   late Contact user;
 
   @override
   void initState() {
-    get_user().then((response) {
+    getUser().then((response) {
       setState(() {
         user = response;
       });
@@ -27,9 +27,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
   }
 
-  Future<Contact> get_user() async {
-    var current_user = await database_service.getUser();
-    return current_user;
+  // Gets the current user from the client database.
+  Future<Contact> getUser() async {
+    var currentUser = await databaseService.getUser();
+    return currentUser;
   }
 
   @override
@@ -39,68 +40,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       body: FutureBuilder(
-        future: get_user(),
+        future: getUser(),
         builder: (BuildContext context, AsyncSnapshot snapshot) {
+
           if (snapshot.hasData) {
             return ListView(
               children: [
+
                 ListTile(
-                  leading: Icon(Icons.alternate_email_outlined),
+                  leading: Icon(Icons.perm_identity_rounded),
                   title: Text('UserID'),
-                  subtitle: Text(user.id),
+                  subtitle: Text(user.id), // Shows the user's ID.
                 ),
+
                 ListTile(
                   leading: Icon(Icons.account_circle_rounded),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => PFPScreen(user: user)),
+                      MaterialPageRoute(builder: (context) => PFPScreen(user: user)), // Redirects to the widget that handles changing a profile picture.
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Profile Picture'),
                 ),
+
                 ListTile(
                   leading: Icon(Icons.alternate_email_outlined),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => UsernameScreen(user: user)),
+                      MaterialPageRoute(builder: (context) => UsernameScreen(user: user)), // Redirects to the widget that handles changing the user's username.
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Username'),
                 ),
+
                 ListTile(
                   leading: Icon(Icons.description_rounded),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => BioScreen(user: user)),
+                      MaterialPageRoute(builder: (context) => BioScreen(user: user)), // Redirects to the widget that handles changing the user's bio.
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Bio'),
                 ),
+
                 ListTile(
                   leading: Icon(Icons.contact_emergency_rounded),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => PronounsScreen(user: user)),
+                      MaterialPageRoute(builder: (context) => PronounsScreen(user: user)), // Redirects to the widget that handles changing the user's pronouns.
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Pronouns'),
                 ),
+
                 ListTile(
                   leading: Icon(Icons.manage_history_sharp),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => MessageHistoryScreen(user: user)),
+                      MaterialPageRoute(builder: (context) => MessageHistoryScreen(user: user)), // Redirects to the widget that handles deleting older messages.
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Message History'),
                 ),
+
               ],
             );
 
@@ -110,15 +120,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: CircularProgressIndicator(),
             );
           }
-
-
         }
       )
-      
-      
-      
-      
-      
 
     );
   }
@@ -177,7 +180,7 @@ class UsernameScreen extends StatefulWidget {
 class _UsernameScreenState extends State<UsernameScreen> {
 
   final TextEditingController _usernameController = TextEditingController();
-  final ClientDB database_service = ClientDB.instance;
+  final ClientDB databaseService = ClientDB.instance;
   bool saveChanges = false;
 
   @override
@@ -196,7 +199,7 @@ class _UsernameScreenState extends State<UsernameScreen> {
         print(widget.user.name);
         widget.user.name = newUsername;
         print(widget.user.name);
-        database_service.modifyUser(widget.user);
+        databaseService.modifyUser(widget.user);
         saveChanges = false;
       }
       if (_usernameController.text != widget.user.name) {
@@ -234,10 +237,6 @@ class _UsernameScreenState extends State<UsernameScreen> {
           ),
         ],
       ),
-      
-      
-      
-      
 
     );
   }
@@ -258,7 +257,7 @@ class BioScreen extends StatefulWidget {
 class _BioScreenState extends State<BioScreen> {
 
   final TextEditingController _bioController = TextEditingController();
-  final ClientDB database_service = ClientDB.instance;
+  final ClientDB databaseService = ClientDB.instance;
   bool saveChanges = false;
 
   @override
@@ -277,7 +276,7 @@ class _BioScreenState extends State<BioScreen> {
         print(widget.user.bio);
         widget.user.bio = newBio;
         print(widget.user.bio);
-        database_service.modifyUser(widget.user);
+        databaseService.modifyUser(widget.user);
         saveChanges = false;
       }
       if (_bioController.text != widget.user.bio) {
@@ -335,7 +334,7 @@ class PronounsScreen extends StatefulWidget {
 class _PronounsScreenState extends State<PronounsScreen> {
 
   final TextEditingController _pronounsController = TextEditingController();
-  final ClientDB database_service = ClientDB.instance;
+  final ClientDB databaseService = ClientDB.instance;
   bool saveChanges = false;
 
   @override
@@ -354,7 +353,7 @@ class _PronounsScreenState extends State<PronounsScreen> {
         print(widget.user.pronouns);
         widget.user.pronouns = newPronouns;
         print(widget.user.pronouns);
-        database_service.modifyUser(widget.user);
+        databaseService.modifyUser(widget.user);
         saveChanges = false;
       }
       if (_pronounsController.text != widget.user.pronouns) {

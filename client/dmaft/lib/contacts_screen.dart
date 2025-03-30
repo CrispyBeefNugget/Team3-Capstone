@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import 'package:dmaft/client_db.dart';
@@ -16,9 +17,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   // Allows us to access the client database, the contents of which are stored locally on device.
-  final ClientDB database_service = ClientDB.instance;
+  final ClientDB databaseService = ClientDB.instance;
 
-  List<Contact> contact_list = [Contact(id: 'test', name: 'test', pronouns: 'test', bio: 'test', pic: Uint8List(10), lastModified: '2025-03-15')]; // Placeholder list. Will remove.
+  List<Contact> contactList = [];
   List<Contact> _filteredList = [];
   late List<bool> _selected; // List is generated later once the contacts are loaded in.
   
@@ -28,41 +29,40 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   @override
   void initState() {
-    get_contact_info().then((response) { // Initializes the lists used for displaying and filtering (searching) contacts.
+    getContactInfo().then((response) { // Initializes the lists used for displaying and filtering (searching) contacts.
       setState(() {
-        contact_list = response;
+        contactList = response;
       });
       initializeSelection();
-      _filteredList = contact_list;
+      _filteredList = contactList;
     });
     _searchController.addListener(_performSearch); // Adds a listener so that we can search contacts.
     super.initState();
   }
 
   // Gets the contacts from the client database.
-  Future<List<Contact>> get_contact_info() async {
-    var db_contacts = await database_service.getContacts();
-    return db_contacts;
+  Future<List<Contact>> getContactInfo() async {
+    var dbContacts = await databaseService.getContacts();
+    return dbContacts;
   }
 
-  Future<void> delete_contact(Contact contact) async {
-    await database_service.delContact(contact);
-  }
-
-  void refresh_contacts() {
-    get_contact_info().then((response) { // Initializes the lists used for displaying and filtering (searching) contacts.
+  // Refreshes the contacts screen. Currently bugged resulting in you having to either delete twice or switch tabs.
+  void refreshContacts() {
+    getContactInfo().then((response) { // Initializes the lists used for displaying and filtering (searching) contacts.
       setState(() {
-        contact_list = response;
+        contactList = response;
       });
       initializeSelection();
-      _filteredList = contact_list;
+      _filteredList = contactList;
     });
   }
 
+  // Initializes a list of bools which is used to determine if a contact is selected.
   void initializeSelection() {
-    _selected = List<bool>.generate(contact_list.length, (_) => false);
+    _selected = List<bool>.generate(contactList.length, (_) => false);
   }
 
+  // Toggles whether the specified contact by index is selected or not.
   void _toggle(int index) {
     setState(() {
       _selected[index] = !_selected[index];
@@ -78,12 +78,12 @@ class _ContactsScreenState extends State<ContactsScreen> {
   // Toggles searching mode depending on if the user types in the text field.
   Future<void> _performSearch() async {
     setState(() {
-      if (isSelectionMode) {
+      if (isSelectionMode) { // Prevents the user from using the search bar if selection mode is enabled.
         _searchController.text = '';
       }
-      if (_searchController.text != '') {
+      if (_searchController.text != '') { // Searching mode is enabled as soon as there is text in the search bar.
         isSearchingMode = true;
-        _filteredList = contact_list
+        _filteredList = contactList
           .where((element) => element.name
             .toLowerCase()
             .contains(_searchController.text.toLowerCase()))
@@ -91,16 +91,18 @@ class _ContactsScreenState extends State<ContactsScreen> {
       }
       else {
         isSearchingMode = false;
-        _filteredList = contact_list;
+        _filteredList = contactList;
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppBar( // The search bar is located in the appbar.
         leading: Icon(Icons.search),
+
         flexibleSpace: Container(
           decoration: BoxDecoration(
             border: Border.all(
@@ -111,6 +113,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             color: Colors.white,
           ),
         ),
+
         title: TextField(
           controller: _searchController,
           style: const TextStyle(color: Colors.black),
@@ -121,6 +124,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             border: InputBorder.none,
           ),
         ),
+
         actions: <Widget>[
           if (isSearchingMode)
             IconButton(
@@ -133,10 +137,11 @@ class _ContactsScreenState extends State<ContactsScreen> {
       ),
 
       body: FutureBuilder(
-        future: get_contact_info(),
+        future: getContactInfo(),
         builder: (BuildContext context, AsyncSnapshot snapshot) {
           if (snapshot.hasData) {
-            return Scaffold(
+
+            return Scaffold( // Whenever selection mode is enabled an appbar with options appears under the search bar.
               appBar: AppBar(
                 leading: 
                   isSelectionMode
@@ -150,39 +155,41 @@ class _ContactsScreenState extends State<ContactsScreen> {
                         },
                     )
                     : const SizedBox(),
-                      actions: <Widget>[
-                        if (isSelectionMode)
-                          IconButton(
-                            onPressed: () {
-                              
-                              for (int i = 0; i < contact_list.length; i++) {
-                                if (_selected[i] == true) {
-                                  delete_contact(contact_list[i]);
-                                }
-                              }
-                              refresh_contacts();
-                              setState(() {
-                                isSelectionMode = false;
-                                initializeSelection();
-                              });
 
-                            },
-                            icon: Icon(Icons.delete)
-                          ),
-                          TextButton(
-                            child:
-                              !_selectAll
-                                ? const Text('select all', style: TextStyle(color: Colors.black))
-                                : const Text('unselect all', style: TextStyle(color: Colors.black)),
-                            onPressed: () {
-                              _selectAll = !_selectAll;
-                              setState(() {
-                                _selected = List<bool>.generate(contact_list.length, (_) => _selectAll);
-                              });
-                            },
-                          ),
-                      ],
-                      toolbarHeight: isSelectionMode ? 50 : 0,
+                actions: <Widget>[
+                  if (isSelectionMode)
+                    IconButton(
+                      onPressed: () {
+                        
+                        for (int i = 0; i < contactList.length; i++) {
+                          if (_selected[i] == true) {
+                            databaseService.delContact(contactList[i]);
+                          }
+                        }
+                        refreshContacts();
+                        setState(() {
+                          isSelectionMode = false;
+                          initializeSelection();
+                        });
+
+                      },
+                      icon: Icon(Icons.delete)
+                    ),
+                    TextButton(
+                      child:
+                        !_selectAll
+                          ? const Text('select all', style: TextStyle(color: Colors.black))
+                          : const Text('unselect all', style: TextStyle(color: Colors.black)),
+                      onPressed: () {
+                        _selectAll = !_selectAll;
+                        setState(() {
+                          _selected = List<bool>.generate(contactList.length, (_) => _selectAll);
+                        });
+                      },
+                    ),
+                ],
+
+                toolbarHeight: isSelectionMode ? 50 : 0,
               ),
 
               body:
@@ -197,6 +204,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                     ),
                     onTap: () => {
                       
+                      // Clicking on a contact opens a page containing more details.
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => Scaffold(
                           appBar: AppBar(
@@ -207,15 +215,16 @@ class _ContactsScreenState extends State<ContactsScreen> {
                             actions: [
                               IconButton(
                                 onPressed: () {
-                                  delete_contact(_filteredList[index]);
-                                  refresh_contacts();
+                                  databaseService.delContact(_filteredList[index]);
+                                  refreshContacts();
                                   Navigator.pop(context);
                                   _searchController.text = '';
                                 },
                                 icon: Icon(Icons.delete),
                               ),
                             ],
-                        ),
+                          ),
+
                           body: Column( // Left off here 
                             children: [
                               Padding(
@@ -253,22 +262,12 @@ class _ContactsScreenState extends State<ContactsScreen> {
                               ),
 
                             ],
-                          )
-                        ))
-                      )
+                          ),
+                        )),
+                      ),
 
                     },
-                    trailing:
-                      isSelectionMode
-                        ? Checkbox(
-                          value: _selected[index],
-                          onChanged: (bool? x) => {
-                            setState(() {
-                              _selected[index] = !_selected[index];
-                            })
-                          },
-                        )
-                        : const SizedBox.shrink(),
+                    
                   ),
                 )
 
@@ -292,22 +291,22 @@ class _ContactsScreenState extends State<ContactsScreen> {
                               actions: [
                                 IconButton(
                                   onPressed: () {
-                                    delete_contact(contact_list[index]);
-                                    refresh_contacts();
+                                    databaseService.delContact(contactList[index]);
+                                    refreshContacts();
                                     Navigator.pop(context);
                                   },
                                   icon: Icon(Icons.delete),
                                 ),
                               ],
                             ),
-                            body: Column(
+                            body: Column( // Left off here
                               children: [
                                 Padding(
                                   padding: EdgeInsets.all(10.0),
                                 ),
                                 Center(
                                   child: CircleAvatar(
-                                    backgroundImage: Image.memory(contact_list[index].pic).image,
+                                    backgroundImage: Image.memory(contactList[index].pic).image,
                                     radius: 100,
                                   ),
                                 ),
@@ -316,19 +315,19 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                 ),
 
                                 ListTile(
-                                  title: Text(contact_list[index].name),
+                                  title: Text(contactList[index].name),
+                                  titleAlignment: ListTileTitleAlignment.center, // Not working. Might substitute listtiles for center or another widget.
+                                ),
+                                ListTile(
+                                  title: Text(contactList[index].pronouns),
                                   titleAlignment: ListTileTitleAlignment.center,
                                 ),
                                 ListTile(
-                                  title: Text(contact_list[index].pronouns),
+                                  title: Text(contactList[index].bio),
                                   titleAlignment: ListTileTitleAlignment.center,
                                 ),
                                 ListTile(
-                                  title: Text(contact_list[index].bio),
-                                  titleAlignment: ListTileTitleAlignment.center,
-                                ),
-                                ListTile(
-                                  title: Text(contact_list[index].lastModified),
+                                  title: Text(contactList[index].lastModified),
                                   titleAlignment: ListTileTitleAlignment.center,
                                 ),
 
@@ -340,7 +339,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                       }
                     },
 
-                    onLongPress: () {
+                    onLongPress: () { // Selection mode is enabled if a user holds on a contact.
                       if (!isSelectionMode) {
                         setState(() {
                           _selected[index] = true;
@@ -350,19 +349,15 @@ class _ContactsScreenState extends State<ContactsScreen> {
                     },
                     trailing: 
                       isSelectionMode
-                        ? Checkbox(
+                        ? Checkbox( // Checkboxes appear on the right side of the tiles if selection mode is enabled.
                           value: _selected[index],
                           onChanged: (bool? x) => _toggle(index),
                         )
-                        : SizedBox.shrink(),
-                    title: Text(contact_list[index].name),
+                        : const SizedBox.shrink(),
+                    title: Text(contactList[index].name),
 
                   ),
-                )
-
-
-
-
+                ),
 
             );
           }
@@ -373,7 +368,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
           }
         }
       )
-      
       
     );
   }
