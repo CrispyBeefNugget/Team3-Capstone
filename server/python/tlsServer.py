@@ -48,6 +48,10 @@ def getRSAPublicKeySHA512(pubkey: rsa.RSAPublicKey):
 #This ONLY works if the user is online and associated with an active websocket.
 def sendOldMessages(userID: str):
     global connectedClients
+    if not connectedClients.isUserConnected(userID):
+        print("User is offline, aborting...")
+        return False
+
     dbConn = dmaftServerDB.startDB()
     try:
         if not dmaftServerDB.doesUserExist(connection=dbConn, userID=userID):
@@ -70,6 +74,8 @@ def sendOldMessages(userID: str):
         msgData = message[4]
         connectedClients.sendMsgToUser(userID, msgData)
 
+    dmaftServerDB.deleteAllMsgsForUser(connection=dbConn, userID=userID)
+    dmaftServerDB.closeDB(dbConn)
     return True
         
 

@@ -702,7 +702,7 @@ def deleteMsgFromMailbox(*, connection: sqlite3.Connection, rowID: int):
 #Returns True if successful and False if not.
 #Valid deletion commands targeting zero rows will still return True.
 #Treat False as if an error occurred.
-def deleteAllMsgsForUser(*, connection: sqlite3.Connection, userID: int):
+def deleteAllMsgsForUser(*, connection: sqlite3.Connection, userID: str):
     try:
         with connection:
             msgDeleteStmt = 'DELETE FROM tblMailbox WHERE Recipient = ?;'
