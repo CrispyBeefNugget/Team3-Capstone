@@ -23,13 +23,11 @@ void main() {
   runApp(const DMAFT());
 }
 
-
-void startNetwork() async {
+void setIdAndKeyPair() async {
 
   final FileAccess fileHelper = FileAccess.instance;
 
   // Old
-  final net = Network();
   final pair1 = testKeypair1();
   final id1 = testID1();
 
@@ -43,7 +41,16 @@ void startNetwork() async {
   // Attempt to new
   await fileHelper.setUUID(id1);
   await fileHelper.setRSAKeys(p, q, n, d, e);
-  // final id1 = await fileHelper.getUUID();
+
+}
+
+void startNetwork() async {
+
+  final FileAccess fileHelper = FileAccess.instance;
+
+  final net = Network();
+
+  final id1 = await fileHelper.getUUID();
   final rsalist = await fileHelper.getRSAKeys();
   print(rsalist);
   print('--------------------------');
