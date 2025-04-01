@@ -412,19 +412,48 @@ class MessageHistoryScreen extends StatefulWidget {
 class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Message History'),
-        centerTitle: true,
-        backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
-        foregroundColor: Colors.white,
-      ),
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Message History'),
+          centerTitle: true,
+          backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
+          foregroundColor: Colors.white,
+        ),
 
-      // Replace with functionality that changes pfp
-      body: Center(
-        child: Text(widget.user.lastModified),
-      ),
-
-    );
+        body: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+                Container(
+                  width: 500,
+                  decoration: BoxDecoration(
+                    border: Border.all(),
+                  ),
+                  child: Text(
+                    "If message history control is disabled, messages will be stored indefinitely until manually deleted.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+                TextFormField(
+                  decoration: InputDecoration(
+                    icon: Icon(Icons.calendar_month),
+                  ),
+                  initialValue: "20", 
+                  style: TextStyle(
+                    fontSize: 20,
+                  ),
+                  onSaved: (String? daysHistory){
+                    //Write new value to db?
+                  },
+                ), 
+            ],
+          ),
+        ),
+      );
   }
 }

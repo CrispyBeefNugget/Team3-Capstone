@@ -20,18 +20,19 @@ void main () async{
 
   //final pic = await settingsHelper.getDefaultPic();
   */
-
   final filehelper = FileAccess.instance;
+  /*
+
   print("UUID:");
   //await filehelper.setUUID("testUUID1");
   //await filehelper.delUUID();
   print(await filehelper.getUUID());
-
+  */
   print("RSAKeys:");
-  //await filehelper.setRSAKeys(["testkey1", "testkey2", "testkey3", "testkey4", "testkey5"]);
+  await filehelper.setRSAKeys("testkeyp", "testkeyq", "testkeyn", "testkeyd", "testkeye");
   //await filehelper.delRSAKeys();
   print(await filehelper.getRSAKeys());
-
+/*
   print("TokenID:");
   //await filehelper.setTokenID("testTokenID1");
   //await filehelper.delTokenID();
@@ -42,4 +43,5 @@ void main () async{
   //await filehelper.delTokenSecret();
   print(await filehelper.getTokenSecret());
   print(utf8.decode(await filehelper.getTokenSecret()));
+  */
 }

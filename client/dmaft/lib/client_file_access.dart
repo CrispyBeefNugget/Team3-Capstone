@@ -128,7 +128,7 @@ class FileAccess {
   //Specify an options object for use with flutter_secure_storage. Allows accessing stored data while the app is in the background.
   final options = IOSOptions(accessibility: KeychainAccessibility.first_unlock);
   //Specify names for the RSA keys in storage. Can be altered to allow for a different number of keys than 5.
-  final List<String> keynames = ["RSAKey1", "RSAKey2", "RSAKey3", "RSAKey4", "RSAKey5"];
+  final List<String> keynames = ["p", "q", "n", "d", "e"];
 
 
 
@@ -180,14 +180,15 @@ class FileAccess {
 
 
   //Method: setRSAKeys.
-  //Parameters: A list of Strings containing the RSA keys to be stored.
+  //Parameters: Five Strings containing the RSA keys to be stored. Each parameter refers to one specific piece: p, q, n, d, and e.
   //Returns: Nothing.
-  //Example Usage: "await filehelper1.setRSAKeys(<a_list_of_Strings>);".
+  //Example Usage: "await filehelper1.setRSAKeys(<p_string>, <q_string>, <n_string>, <d_string>, <e_string>);".
   //Description: Overwrites the contents of the RSAKeys field in flutter secure storage with the provided list of new keys. Stored persistently.
-  Future<void> setRSAKeys(List<String> newkeys) async{
+  Future<void> setRSAKeys(String p, String q, String n, String d, String e) async{
     //Access flutter secure storage.
     final storage = FlutterSecureStorage();
     //Store each of the RSA keys in flutter secure storage.
+    List<String> newkeys = [p, q, n, d, e];
     for(int i = 0; i < newkeys.length; i++){
       await storage.write(key: keynames[i], value: newkeys[i], iOptions: options);
     }
@@ -197,8 +198,8 @@ class FileAccess {
 
   //Method: getRSAKeys.
   //Parameters: None.
-  //Returns: The currently-stored list of RSA Keys, each in String format.
-  //Example Usage: "List<String> keys = await filehelper1.getRSAKeys();".
+  //Returns: A map of RSA keys. Map keys are the key names: p, q, n, d, and e. The values are the keys.
+  //Example Usage: "Map<String, String> keys = await filehelper1.getRSAKeys();".
   //Description: Fetches each of the RSAKey Strings currently stored in flutter secure storage and returns them as a list of Strings. The list of keys is 
   //  ordered exactly as the list of keys given to setRSAKeys was. Throws an exception if there are no RSAKey values in storage or if there are fewer
   //  keys in storage than there are names in the "keynames" list at the start of the "Secure communication data storage" section.
