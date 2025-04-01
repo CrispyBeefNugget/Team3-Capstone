@@ -33,9 +33,16 @@ void startNetwork() async {
   final pair1 = testKeypair1();
   final id1 = testID1();
 
+  final privateKey = pair1.privateKey;
+  final p = privateKey.p.toString();
+  final q = privateKey.q.toString();
+  final n = privateKey.n.toString();
+  final d = privateKey.privateExponent.toString();
+  final e = privateKey.publicExponent.toString();
+
   // Attempt to new
   await fileHelper.setUUID(id1);
-  await fileHelper.setRSAKeys(newkeys)
+  await fileHelper.setRSAKeys(p, q, n, d, e);
   // final id1 = await fileHelper.getUUID();
   final rsalist = await fileHelper.getRSAKeys();
   print(rsalist);
