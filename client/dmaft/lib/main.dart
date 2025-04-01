@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:dmaft/client_file_access.dart';
 import 'package:flutter/material.dart';
 
 import 'package:dmaft/client_db.dart';
@@ -22,6 +23,36 @@ void main() {
   runApp(const DMAFT());
 }
 
+
+void startNetwork() async {
+
+  final FileAccess fileHelper = FileAccess.instance;
+
+  // Old
+  final net = Network();
+  final pair1 = testKeypair1();
+  final id1 = testID1();
+
+  // Attempt to new
+  await fileHelper.setUUID(id1);
+  await fileHelper.setRSAKeys(newkeys)
+  // final id1 = await fileHelper.getUUID();
+  final rsalist = await fileHelper.getRSAKeys();
+  print(rsalist);
+  print('--------------------------');
+
+
+  net.setUserKeypair(pair1.privateKey);
+  net.setUserID(id1);
+  net.setServerURL('wss://10.0.2.2:8765');
+  net.clientSock.stream.listen((data) {
+    // Replace with a call to my handler function.
+    print(data);
+  });
+  print("Finished setting up the listener for the UI!");
+
+}
+
 class DMAFT extends StatelessWidget {
   const DMAFT({super.key});
 
@@ -29,17 +60,7 @@ class DMAFT extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     
-    final net = Network();
-    final id1 = testID1();
-    final pair1 = testKeypair1();
-    net.setUserKeypair(pair1.privateKey);
-    net.setUserID(id1);
-    net.setServerURL('wss://10.0.2.2:8765');
-    net.clientSock.stream.listen((data) {
-      // Replace with a call to my handler function.
-      print(data);
-    });
-    print("Finished setting up the listener for the UI!");
+    startNetwork();
     
     return MaterialApp(
       theme: ThemeData(

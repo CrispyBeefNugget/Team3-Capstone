@@ -67,9 +67,21 @@ class _ChatsScreenState extends State<ChatsScreen> {
   }
 
   // Gets the messages of a specific conversation from the client database.
-  Future<List<MsgLog>> getChatMessages(conversationId) async {
+  Future<List<MsgLog>> getChatMessages(String conversationId) async {
     List<MsgLog> logs = await databaseService.getMsgLogs(conversationId);
     return logs;
+  }
+
+  // Generates a message ID for a message in a conversation.
+  Future<String> getMessageID(String conversationID) async {
+    String messageID = await databaseService.generateMsgID(conversationID);
+    return messageID;
+  }
+
+  // Gets the user (sender) ID.
+  Future<String> getUserID() async {
+    Contact user = await databaseService.getUser();
+    return user.id;
   }
 
   // Refreshes the conversations screen.
@@ -306,36 +318,56 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 },
                               ),
 
-                              Row( // The textfield and sending portion of the conversation.
-                                children: <Widget>[
-                                  Expanded(
-                                    child: TextField(
-                                      controller: messageContent,
-                                      decoration: const InputDecoration(
-                                        hintText: 'Type Message',
-                                      ),
-                                      style: const TextStyle(color: Colors.black),
-                                      cursorColor: Colors.black,
-                                    ),
-                                  ),
+                              FutureBuilder(
+                                future: Future.wait([getMessageID(_filteredList.list[index].convoID), getUserID()]),
+                                builder: (BuildContext context2, AsyncSnapshot snapshot2) {
 
-                                  SizedBox(
-                                    width: 50,
-                                    child: IconButton(
-                                      onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
-                                        print(messageContent.text);
-                                        MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: DateTime.now().toString(), message: utf8.encode(messageContent.text));
-                                        databaseService.addMsgLog(log);
-                                        Network net = Network();
-                                        net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text);
-                                        refreshMessages(_filteredList.list[index].convoID);
-                                      },
-                                      icon: Icon(Icons.send),
-                                    ),
-                                  ),
-                                
-                                ],
+                                  if (snapshot2.hasData) {
+
+                                    return Row( // The textfield and sending portion of the conversation.
+                                      children: <Widget>[
+                                        Expanded(
+                                          child: TextField(
+                                            controller: messageContent,
+                                            decoration: const InputDecoration(
+                                              hintText: 'Type Message',
+                                            ),
+                                            style: const TextStyle(color: Colors.black),
+                                            cursorColor: Colors.black,
+                                          ),
+                                        ),
+
+                                        SizedBox(
+                                          width: 50,
+                                          child: IconButton(
+                                            onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
+                                              print(messageContent.text);                                              
+                                              String newMsgID = snapshot2.data[0];
+                                              String userID = snapshot2.data[1];
+                                              MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toString(), message: utf8.encode(messageContent.text));
+                                              databaseService.addMsgLog(log);
+                                              Network net = Network();
+                                              net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text, newMsgID);
+                                              refreshMessages(_filteredList.list[index].convoID);
+                                            },
+                                            icon: Icon(Icons.send),
+                                          ),
+                                        ),
+                                      
+                                      ],
+                                    );
+
+                                  }
+
+                                  else {
+                                    return CircularProgressIndicator();
+                                  }
+                                }
+                              
+                              
                               ),
+
+                              
 
                               Padding(
                                 padding: EdgeInsets.all(10.0)
@@ -418,35 +450,52 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                   },
                                 ),
 
-                                Row( // The textfield and sending portion of the conversation.
-                                  children: <Widget>[
-                                    Expanded(
-                                      child: TextField(
-                                        controller: messageContent,
-                                        decoration: const InputDecoration(
-                                          hintText: 'Type Message',
-                                        ),
-                                        style: const TextStyle(color: Colors.black),
-                                        cursorColor: Colors.black,
-                                      ),
-                                    ),
+                                FutureBuilder(
+                                  future: Future.wait([getMessageID(conversationList.list[index].convoID), getUserID()]),
+                                  builder: (BuildContext context2, AsyncSnapshot snapshot2) {
 
-                                    SizedBox(
-                                      width: 50,
-                                      child: IconButton(
-                                        onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
-                                          print(messageContent.text);
-                                          MsgLog log = MsgLog(convoID: conversationList.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: DateTime.now().toString(), message: utf8.encode(messageContent.text)); // Change to the generated IDs provided by Ben's methods.
-                                          databaseService.addMsgLog(log);
-                                          Network net = Network();
-                                          net.sendTextMessage(conversationList.list[index].convoID, messageContent.text);
-                                          refreshMessages(conversationList.list[index].convoID);
-                                        },
-                                        icon: Icon(Icons.send),
-                                      ),
-                                    ),
-                                
-                                  ],
+                                    if (snapshot2.hasData) {
+
+                                      return Row( // The textfield and sending portion of the conversation.
+                                        children: <Widget>[
+                                          Expanded(
+                                            child: TextField(
+                                              controller: messageContent,
+                                              decoration: const InputDecoration(
+                                                hintText: 'Type Message',
+                                              ),
+                                              style: const TextStyle(color: Colors.black),
+                                              cursorColor: Colors.black,
+                                            ),
+                                          ),
+
+                                          SizedBox(
+                                            width: 50,
+                                            child: IconButton(
+                                              onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
+                                                print(messageContent.text);
+                                                String newMsgID = snapshot2.data[0];
+                                                String userID = snapshot2.data[1];
+                                                MsgLog log = MsgLog(convoID: conversationList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toString(), message: utf8.encode(messageContent.text)); // Change to the generated IDs provided by Ben's methods.
+                                                databaseService.addMsgLog(log);
+                                                Network net = Network();
+                                                net.sendTextMessage(conversationList.list[index].convoID, messageContent.text, newMsgID);
+                                                refreshMessages(conversationList.list[index].convoID);
+                                              },
+                                              icon: Icon(Icons.send),
+                                            ),
+                                          ),
+                                      
+                                        ],
+                                      );
+
+                                    }
+
+                                    else {
+                                      return CircularProgressIndicator();
+                                    }
+
+                                  }
                                 ),
 
                                 Padding(
