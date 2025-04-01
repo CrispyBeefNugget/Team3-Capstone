@@ -1,12 +1,11 @@
+import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/material.dart';
 
 import 'package:dmaft/client_db.dart';
-import 'package:flutter/material.dart';
 import 'package:dmaft/splash_screen.dart';
 import 'package:dmaft/network.dart';
-import 'dart:io';
 import 'package:dmaft/test_keys.dart';
-
 
 //UNCOMMENT THIS TO WEAKEN SECURITY AND ALLOW FOR SELF-SIGNED TLS CERTIFICATES
 class MyHttpOverrides extends HttpOverrides {
@@ -17,7 +16,6 @@ class MyHttpOverrides extends HttpOverrides {
           (X509Certificate cert, String host, int port) => true;
   }
 }
-
 
 void main() {
   HttpOverrides.global = MyHttpOverrides(); //UNCOMMENT THIS TO WEAKEN SECURITY AND ALLOW FOR SELF-SIGNED TLS CERTIFICATES
@@ -55,53 +53,41 @@ class DMAFT extends StatelessWidget {
 }
 
 
+// Handles the sending and receiving of messages over the network and updates the client DB accordingly.
 class Handler {
-
-
-//   incomingMessageMsgFormat = {
-//     'Command':'INCOMINGMESSAGE',
-//     'ServerTimestamp': time.time(), 
-//     'OriginalReceiptTimestamp':'', #timestamp of when the server received this message
-//     'SenderId':'', #server-issued ID for the sender.
-//     'ConversationId':'',
-//     'MessageType':'',
-//     'MessageData':'',
-// }
-
-  
-
 
   void handleMessage(Map data) {
 
-    final ClientDB database_service = ClientDB.instance;
+    final ClientDB databaseService = ClientDB.instance;
 
     switch (data['Command']) {
       case 'NEWCONVERSATIONCREATED':
         const requiredKeys = ['Members','ConversationId'];
         for (final rkey in requiredKeys) {
           if (!data.containsKey(rkey)) {
-            print("Required key " + rkey + " is missing!");
+            print("Required key $rkey is missing!");
             return;
           }
         }
 
         Conversation convo = Conversation(convoID: data['ConversationId'], convoMembers: data['Members'], lastModified: DateTime.now().toString());   
-        database_service.addConvo(convo);
+        databaseService.addConvo(convo);
 
       case 'INCOMINGMESSAGE':
         const requiredKeys = ['OriginalReceiptTimestamp', 'MessageId', 'SenderId', 'ConversationId', 'MessageType', 'MessageData'];
         for (final rkey in requiredKeys) {
           if (!data.containsKey(rkey)) {
-            print("Required key " + rkey + " is missing!");
+            print("Required key $rkey is missing!");
             return;
           }
         }
 
-        var message_content = data['MessageData'];
+        var messageContent = data['MessageData'];
         if (data['MessageType'] == 'Text') {
-          message_content = utf8.encode(message_content);
+          messageContent = utf8.encode(messageContent);
         }
-        MsgLog msglog = MsgLog(convoID: data['ConversationId'], msgID: data['MessageId'], msgType: data['MessageType'], senderID: data['SenderId'], rcvTime: data['OriginalReceiptTimestamp'].toString(), message: message_content);
+        MsgLog msglog = MsgLog(convoID: data['ConversationId'], msgID: data['MessageId'], msgType: data['MessageType'], senderID: data['SenderId'], rcvTime: data['OriginalReceiptTimestamp'].toString(), message: messageContent);
+        databaseService.addMsgLog(msglog);
         
         break;
       default:

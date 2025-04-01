@@ -1,8 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'package:dmaft/client_db.dart';
 import 'package:dmaft/network.dart';
-import 'dart:convert';
 
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
@@ -13,16 +14,16 @@ class ChatsScreen extends StatefulWidget {
 
 class _ChatsScreenState extends State<ChatsScreen> {
 
+  // Allows us to search in the appbar textfield.
   final TextEditingController _searchController = TextEditingController();
 
-  final ClientDB database_service = ClientDB.instance;
+  // Allows us to access the client database, the contents of which are stored locally on device.
+  final ClientDB databaseService = ClientDB.instance;
 
-  ({List<Conversation> list, List<String> names}) chat_list = (list: [], names: []);
+  ({List<Conversation> list, List<String> names}) conversationList = (list: [], names: []);
   ({List<Conversation> list, List<String> names}) _filteredList = (list: [], names: []);
-
-  List<MsgLog> messages = [];
-
   late List<bool> _selected;
+  List<MsgLog> messages = [];
 
   Map<String, Map<String, String>> userIDsToNames = {}; //Holds the userIDs and userNames for participants in each conversation.
 
@@ -32,65 +33,71 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   @override
   void initState() {
-    get_chat_info().then((response) {
+    getConversationInfo().then((response) {
       setState(() {
-        chat_list = (list: response.$1, names: response.$2);
+        conversationList = (list: response.$1, names: response.$2);
       });
       initializeSelection();
-      _filteredList = chat_list;
+      _filteredList = conversationList;
     });
     _searchController.addListener(_performSearch);
     super.initState();
   }
 
-  Future<(List<Conversation>, List<String>)> get_chat_info() async {
-    List<Conversation> db_conversations = await database_service.getAllConvos();
-    List<String> conversation_names = [];
+  // Gets the conversations from the client database.
+  Future<(List<Conversation>, List<String>)> getConversationInfo() async {
+    List<Conversation> dbConversations = await databaseService.getAllConvos();
+    List<String> conversationNames = [];
     //For each conversation, create a single string containing all other users in the convo.
-    for(int i = 0; i < db_conversations.length; i++){
-      List<Contact> convo_members = await database_service.getConvoMembers(db_conversations[i].convoID);
+    for(int i = 0; i < dbConversations.length; i++){
+      List<Contact> convoMembers = await databaseService.getConvoMembers(dbConversations[i].convoID);
       String temp = "";
       //For each convo member, add their name to the string.
-      for(int j = 0; j < convo_members.length; j++){
-        temp = "$temp   ${convo_members[j].name}";
+      for(int j = 0; j < convoMembers.length; j++){
+        temp = "$temp   ${convoMembers[j].name}";
       }
-      conversation_names.add(temp);
+      conversationNames.add(temp);
       //Also update the userIDToName list with convo member data and the user's data.
-      Contact user = await database_service.getUser();
-      convo_members.add(user);
-      Map<String, String> temp2 = ClientDB.userIDNameMap(convo_members);
-      userIDsToNames[db_conversations[i].convoID] = temp2;
+      Contact user = await databaseService.getUser();
+      convoMembers.add(user);
+      Map<String, String> temp2 = ClientDB.userIDNameMap(convoMembers);
+      userIDsToNames[dbConversations[i].convoID] = temp2;
     }
-    return (db_conversations, conversation_names); //Returns a Record
+    return (dbConversations, conversationNames); //Returns a Record
   }
 
-  Future<List<MsgLog>> get_chat_messages(conversation_id) async {
-    List<MsgLog> logs = await database_service.getMsgLogs(conversation_id);
+  // Gets the messages of a specific conversation from the client database.
+  Future<List<MsgLog>> getChatMessages(conversationId) async {
+    List<MsgLog> logs = await databaseService.getMsgLogs(conversationId);
     return logs;
   }
 
-  void refresh_conversations() {
-    get_chat_info().then((response) {
+  // Refreshes the conversations screen.
+  void refreshConversations() {
+    getConversationInfo().then((response) {
       setState(() {
-        chat_list = (list: response.$1, names: response.$2);
+        conversationList = (list: response.$1, names: response.$2);
       });
       initializeSelection();
-      _filteredList = chat_list;
+      _filteredList = conversationList;
     });
   }
 
-  void refresh_messages(String conversation_id) {
-    get_chat_messages(conversation_id).then((response) {
+  // Refreshes the messages in a conversation. Currently bugged iirc.
+  void refreshMessages(String conversationId) {
+    getChatMessages(conversationId).then((response) {
       setState(() {
         messages = response;
       });
     });
   }
 
+  // Initializes a list of bools which is used to determine if a conversation is selected.
   void initializeSelection() {
-    _selected = List<bool>.generate(chat_list.names.length, (_) => false);
+    _selected = List<bool>.generate(conversationList.names.length, (_) => false);
   }
 
+  // Toggles whether the specified conversation by index is selected or not.
   void _toggle(int index) {
     setState(() {
       _selected[index] = !_selected[index];
@@ -103,27 +110,26 @@ class _ChatsScreenState extends State<ChatsScreen> {
     super.dispose();
   }
 
+  // Toggles searching mode depending on if the user types in the text field.
   Future<void> _performSearch() async {
     setState(() {
-      if (isSelectionMode) {
+      if (isSelectionMode) { // Prevents the user from using the search bar if selection mode is enabled.
         _searchController.text = '';
       }
-      if (_searchController.text != '') {
+      if (_searchController.text != '') { // Searching mode is enabled as soon as there is text in the search bar.
         isSearchingMode = true;
-
-        ({List<Conversation> list, List<String> names}) temp_list = (list: [], names: []);
-        for (int i = 0; i < chat_list.list.length; i++) {
-          if (chat_list.names[i].toLowerCase().contains(_searchController.text.toLowerCase())) {
-            temp_list.list.add(chat_list.list[i]);
-            temp_list.names.add(chat_list.names[i]);
+        ({List<Conversation> list, List<String> names}) tempList = (list: [], names: []);
+        for (int i = 0; i < conversationList.list.length; i++) {
+          if (conversationList.names[i].toLowerCase().contains(_searchController.text.toLowerCase())) {
+            tempList.list.add(conversationList.list[i]);
+            tempList.names.add(conversationList.names[i]);
           }
         }
-        _filteredList = temp_list;
-
+        _filteredList = tempList;
       }
       else {
         isSearchingMode = false;
-        _filteredList = chat_list;
+        _filteredList = conversationList;
       }
     });
   }
@@ -132,9 +138,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
   Widget build(BuildContext context) {
 
     return Scaffold(
-
-      appBar: AppBar(
+      appBar: AppBar( // The search bar is located in the appbar.
         leading: Icon(Icons.search),
+
         flexibleSpace: Container(
           decoration: BoxDecoration(
             border: Border.all(
@@ -145,16 +151,18 @@ class _ChatsScreenState extends State<ChatsScreen> {
             color: Colors.white,
           ),
         ),
+
         title: TextField(
           controller: _searchController,
           style: const TextStyle(color: Colors.black),
           cursorColor: Colors.black,
           decoration: const InputDecoration(
-            hintText: 'Search Chats',
+            hintText: 'Search Conversations',
             hintStyle: TextStyle(color: Colors.black),
             border: InputBorder.none,
           ),
         ),
+
         actions: <Widget>[
           if (isSearchingMode)
             IconButton(
@@ -167,11 +175,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
       ),
 
       body: FutureBuilder(
-        future: get_chat_info(),
+        future: getConversationInfo(),
         builder: (BuildContext context, AsyncSnapshot snapshot) {
           if (snapshot.hasData) {
 
-            return Scaffold(
+            return Scaffold( // Whenever selection mode is enabled an appbar with options appears under the search bar.
               appBar: AppBar(
                 leading: 
                   isSelectionMode
@@ -185,17 +193,18 @@ class _ChatsScreenState extends State<ChatsScreen> {
                         },
                     )
                     : const SizedBox(),
+
                 actions: <Widget>[
                   if (isSelectionMode)
                     IconButton(
                       onPressed: () {
                         
-                        for (int i = 0; i < chat_list.list.length; i++) {
+                        for (int i = 0; i < conversationList.list.length; i++) {
                           if (_selected[i] == true) {
-                            database_service.delConvo(chat_list.list[i]);
+                            databaseService.delConvo(conversationList.list[i]);
                           }
                         }
-                        refresh_conversations();
+                        refreshConversations();
                         setState(() {
                           isSelectionMode = false;
                           initializeSelection();
@@ -212,13 +221,13 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       onPressed: () {
                         _selectAll = !_selectAll;
                         setState(() {
-                          _selected = List<bool>.generate(chat_list.list.length, (_) => _selectAll);
+                          _selected = List<bool>.generate(conversationList.list.length, (_) => _selectAll);
                         });
                       },
                     ),
                 ],
-                toolbarHeight:
-                  isSelectionMode ? 50 : 0,
+
+                toolbarHeight: isSelectionMode ? 50 : 0,
               ),
 
               body:
@@ -232,10 +241,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       style: const TextStyle(color: Colors.black),
                     ),
                     onTap: () {
-                      TextEditingController _messageContent = TextEditingController();
+                      TextEditingController messageContent = TextEditingController();
 
-                      refresh_messages(_filteredList.list[index].convoID); // Need to fix
+                      refreshMessages(_filteredList.list[index].convoID);
 
+                      // Clicking on a conversation opens a page containing the messages part of that conversation.
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => Scaffold(
                           appBar: AppBar(
@@ -246,8 +256,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
                             actions: [
                                 IconButton(
                                   onPressed: () {
-                                    database_service.delConvo(_filteredList.list[index]);
-                                    refresh_conversations();
+                                    databaseService.delConvo(_filteredList.list[index]);
+                                    refreshConversations();
                                     Navigator.pop(context);
                                     _searchController.text = '';
                                   },
@@ -255,23 +265,24 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 ),
                               ],
                           ),
+
                           body: Column(
                             children: [
                               Padding(
                                 padding: EdgeInsets.all(10.0)
                               ),
 
-                              FutureBuilder(
-                                future: get_chat_messages(_filteredList.list[index].convoID),
+                              FutureBuilder( // The messages portion of the conversation.
+                                future: getChatMessages(_filteredList.list[index].convoID),
                                 builder: (BuildContext context2, AsyncSnapshot snapshot2) {
 
-                                  if (snapshot2.connectionState != ConnectionState.done) {
+                                  if (snapshot2.connectionState != ConnectionState.done) { // Left off here on trying to get the FutureBuilder to refresh.
                                     return Center(
                                       child: CircularProgressIndicator(),
                                     );
                                   }
 
-                                  else if (snapshot2.hasData) {
+                                  else if (snapshot2.hasData) { // Messages are loaded in with the ListView.builder.
                                     return Expanded(
                                       child: SizedBox(
                                         child: ListView.builder(
@@ -280,27 +291,26 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                             title: Text(utf8.decode(messages[index2].message)),
                                             subtitle: Text(messages[index2].rcvTime),
                                             titleAlignment: ListTileTitleAlignment.center,
-                                            
                                           ),
                                         ),
                                       ),
-                                      
                                     );
-
                                   }
+
                                   else {
                                     return Center(
                                       child: CircularProgressIndicator(),
                                     );
                                   }
+
                                 },
                               ),
 
-                              Row(
+                              Row( // The textfield and sending portion of the conversation.
                                 children: <Widget>[
                                   Expanded(
                                     child: TextField(
-                                      controller: _messageContent,
+                                      controller: messageContent,
                                       decoration: const InputDecoration(
                                         hintText: 'Type Message',
                                       ),
@@ -313,12 +323,12 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                     width: 50,
                                     child: IconButton(
                                       onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
-                                        print(_messageContent.text);
-                                        MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: 'test', message: utf8.encode(_messageContent.text));
-                                        database_service.addMsgLog(log);
+                                        print(messageContent.text);
+                                        MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: DateTime.now().toString(), message: utf8.encode(messageContent.text));
+                                        databaseService.addMsgLog(log);
                                         Network net = Network();
-                                        net.sendTextMessage(_filteredList.list[index].convoID, _messageContent.text);
-                                        refresh_messages(_filteredList.list[index].convoID);
+                                        net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text);
+                                        refreshMessages(_filteredList.list[index].convoID);
                                       },
                                       icon: Icon(Icons.send),
                                     ),
@@ -331,26 +341,13 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 padding: EdgeInsets.all(10.0)
                               ),
 
-                              
-
                             ],
                           )
                         ))
                       );
-                      
 
                     },
-                    trailing:
-                      isSelectionMode
-                        ? Checkbox(
-                          value: _selected[index],
-                          onChanged: (bool? x) => {
-                            setState(() {
-                              _selected[index] = !_selected[index];
-                            })
-                          },
-                        )
-                        : const SizedBox.shrink(),
+                    
                   ),
                 )
 
@@ -363,22 +360,23 @@ class _ChatsScreenState extends State<ChatsScreen> {
                         _toggle(index);
                       }
                       else {
-                        TextEditingController _messageContent = TextEditingController();
+                        TextEditingController messageContent = TextEditingController();
 
-                        refresh_messages(_filteredList.list[index].convoID); // Need to fix
+                        refreshMessages(_filteredList.list[index].convoID);
 
+                        // Clicking on a conversation opens a page containing the messages part of that conversation.
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (context) => Scaffold(
                             appBar: AppBar(
-                              title: Text(chat_list.names[index]),
+                              title: Text(conversationList.names[index]),
                               centerTitle: true,
                               backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
                               foregroundColor: Colors.white,
                               actions: [
                                 IconButton(
                                   onPressed: () {
-                                    database_service.delConvo(chat_list.list[index]);
-                                    refresh_conversations();
+                                    databaseService.delConvo(conversationList.list[index]);
+                                    refreshConversations();
                                     Navigator.pop(context);
                                   },
                                   icon: Icon(Icons.delete),
@@ -387,15 +385,16 @@ class _ChatsScreenState extends State<ChatsScreen> {
                             ),
                             body: Column(
                               children: [
+
                                 Padding(
                                   padding: EdgeInsets.all(10.0)
                                 ),
 
-
-                                FutureBuilder(
-                                  future: get_chat_messages(chat_list.list[index].convoID),
+                                FutureBuilder( // The messages portion of the conversation.
+                                  future: getChatMessages(conversationList.list[index].convoID),
                                   builder: (BuildContext context2, AsyncSnapshot snapshot2) {
-                                    if (snapshot2.hasData) {
+
+                                    if (snapshot2.hasData) { // Messages are loaded in with the ListView.builder.
                                       return Expanded(
                                         child: SizedBox(
                                           child: ListView.builder(
@@ -404,33 +403,26 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                               title: Text(utf8.decode(messages[index2].message)),
                                               subtitle: Text(messages[index2].rcvTime),
                                               titleAlignment: ListTileTitleAlignment.center,
-                                              
                                             ),
                                           ),
                                         ),
-                                          
-
-
-                                        
                                       );
-
-
                                     }
+
                                     else {
                                       return Center(
                                         child: CircularProgressIndicator(),
                                       );
                                     }
+
                                   },
                                 ),
 
-
-
-                                  Row(
+                                Row( // The textfield and sending portion of the conversation.
                                   children: <Widget>[
                                     Expanded(
                                       child: TextField(
-                                        controller: _messageContent,
+                                        controller: messageContent,
                                         decoration: const InputDecoration(
                                           hintText: 'Type Message',
                                         ),
@@ -443,17 +435,17 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                       width: 50,
                                       child: IconButton(
                                         onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
-                                          print(_messageContent.text);
-                                          MsgLog log = MsgLog(convoID: chat_list.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: 'test', message: utf8.encode(_messageContent.text)); // Change to the generated IDs provided by Ben's methods.
-                                          database_service.addMsgLog(log);
+                                          print(messageContent.text);
+                                          MsgLog log = MsgLog(convoID: conversationList.list[index].convoID, msgID: 'test', msgType: 'Text', senderID: 'test', rcvTime: DateTime.now().toString(), message: utf8.encode(messageContent.text)); // Change to the generated IDs provided by Ben's methods.
+                                          databaseService.addMsgLog(log);
                                           Network net = Network();
-                                        net.sendTextMessage(chat_list.list[index].convoID, _messageContent.text);
-                                          refresh_messages(chat_list.list[index].convoID);
+                                          net.sendTextMessage(conversationList.list[index].convoID, messageContent.text);
+                                          refreshMessages(conversationList.list[index].convoID);
                                         },
                                         icon: Icon(Icons.send),
                                       ),
                                     ),
-                                  
+                                
                                   ],
                                 ),
 
@@ -467,7 +459,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       }
                     },
 
-                    onLongPress: () {
+                    onLongPress: () { // Selection mode is enabled if a user holds on a conversation.
                       if (!isSelectionMode) {
                         setState(() {
                           _selected[index] = true;
@@ -477,15 +469,14 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     },
                     trailing: 
                       isSelectionMode
-                        ? Checkbox(
+                        ? Checkbox( // Checkboxes appear on the right side of the tiles if selection mode is enabled.
                           value: _selected[index],
                           onChanged: (bool? x) => _toggle(index),
                         )
-                        : SizedBox.shrink(),
-                    title: Text(chat_list.names[index]),
+                        : const SizedBox.shrink(),
+                    title: Text(conversationList.names[index]),
                   ),
                 )
-
 
             );
 
@@ -495,12 +486,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
               child: CircularProgressIndicator(),
             );
           }
-
-
         },
       )
-      
-      
       
     );
   }

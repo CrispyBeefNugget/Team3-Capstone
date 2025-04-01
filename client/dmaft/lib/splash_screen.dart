@@ -62,7 +62,7 @@ class _SplashScreenState extends State<SplashScreen>
             ),
             SizedBox(height: 20),
             Text(
-              'DMAFT',
+              'DMAFT', // Name will be changed.
               style: TextStyle(
                 fontStyle: FontStyle.normal,
                 color: Colors.white,
