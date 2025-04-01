@@ -9,7 +9,9 @@ void main () async{
   
 final ClientDB databaseservice = ClientDB.instance; //Access ClientDB database.
 
-print(await databaseservice.generateMsgID("1"));
+print(await databaseservice.generateMsgID("2"));
+print(await databaseservice.generateMsgID("2"));
+print(await databaseservice.generateMsgID("2"));
 
 /*
 var contacts = await databaseservice.getConvoMembers("1");
