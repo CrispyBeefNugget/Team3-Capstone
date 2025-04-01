@@ -7,6 +7,7 @@ import 'package:dmaft/client_db.dart';
 import 'package:dmaft/splash_screen.dart';
 import 'package:dmaft/network.dart';
 import 'package:dmaft/test_keys.dart';
+import 'package:pointycastle/export.dart';
 
 //UNCOMMENT THIS TO WEAKEN SECURITY AND ALLOW FOR SELF-SIGNED TLS CERTIFICATES
 class MyHttpOverrides extends HttpOverrides {
@@ -41,23 +42,26 @@ void setIdAndKeyPair() async {
   // Attempt to new
   await fileHelper.setUUID(id1);
   await fileHelper.setRSAKeys(p, q, n, d, e);
-
 }
 
 void startNetwork() async {
 
   final FileAccess fileHelper = FileAccess.instance;
-
   final net = Network();
 
-  final id1 = await fileHelper.getUUID();
+  final id = await fileHelper.getUUID();
   final rsalist = await fileHelper.getRSAKeys();
+  RSAPrivateKey privateKey = RSAPrivateKey(
+    BigInt.parse(rsalist['n']!),
+    BigInt.parse(rsalist['d']!),
+    BigInt.parse(rsalist['p']!),
+    BigInt.parse(rsalist['q']!)
+    );
   print(rsalist);
   print('--------------------------');
 
-
-  net.setUserKeypair(pair1.privateKey);
-  net.setUserID(id1);
+  net.setUserKeypair(privateKey);
+  net.setUserID(id);
   net.setServerURL('wss://10.0.2.2:8765');
   net.clientSock.stream.listen((data) {
     // Replace with a call to my handler function.
