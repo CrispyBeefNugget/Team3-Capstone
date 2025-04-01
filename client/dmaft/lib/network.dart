@@ -680,6 +680,10 @@ Can vary from data integrity checks to sub-functions.
         print("Required key " + rkey + " is missing!");
         return false;
       }
+      if (rkey == 'OriginalReceiptTimestamp') { //We don't want to enforce the receipt timestamp being a string
+        continue;
+      }
+
       if (responseData[rkey] is! String) {
         print("Required key " + rkey + " does not have a String value!");
         return false;

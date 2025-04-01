@@ -22,12 +22,12 @@ import handleAuth
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
 # Nigel's path
-# ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
-# ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
+ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
+ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
 
 # Jeremey's path
-ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
-ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
+#ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
+#ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
 
 # Ben's path
 # ssl_cert = 'C:\Users\Ben\Desktop\dmaft-tls_cert.pem'
@@ -299,7 +299,7 @@ def handleLeaveConvoRequest(clientRequest: dict):
 def handleSendMessageRequest(clientRequest: dict):
     #Make sure we have a valid request
     keys = set(clientRequest.keys())
-    expectedKeys = {'Command','ConversationId','MessageType','MessageData'}
+    expectedKeys = {'Command','ConversationId','MessageType','MessageData','MessageId'}
     if not expectedKeys.issubset(keys):
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more required JSON keys are missing from the request.')
 
@@ -307,6 +307,7 @@ def handleSendMessageRequest(clientRequest: dict):
         type(clientRequest['Command']) == str,
         type(clientRequest['ConversationId']) == str,
         type(clientRequest['MessageType']) == str,
+        type(clientRequest['MessageId']) == str,
     ]
 
     if False in sanityChecks:
@@ -338,7 +339,8 @@ def handleSendMessageRequest(clientRequest: dict):
         'SenderId':clientRequest['UserId'],
         'ConversationId':clientRequest['ConversationId'],
         'MessageType':clientRequest['MessageType'],
-        'MessageData':clientRequest['MessageData']
+        'MessageData':clientRequest['MessageData'],
+        'MessageId':clientRequest['MessageId']
     }
 
     userMsgJSON = json.dumps(userMsgData)

@@ -29,10 +29,10 @@ void setIdAndKeyPair() async {
   final FileAccess fileHelper = FileAccess.instance;
 
   // Old
-  final pair1 = testKeypair1();
-  final id1 = testID1();
+  final pair2 = testKeypair2();
+  final id2 = testID2();
 
-  final privateKey = pair1.privateKey;
+  final privateKey = pair2.privateKey;
   final p = privateKey.p.toString();
   final q = privateKey.q.toString();
   final n = privateKey.n.toString();
@@ -40,7 +40,7 @@ void setIdAndKeyPair() async {
   final e = privateKey.publicExponent.toString();
 
   // Attempt to new
-  await fileHelper.setUUID(id1);
+  await fileHelper.setUUID(id2);
   await fileHelper.setRSAKeys(p, q, n, d, e);
 }
 
@@ -64,11 +64,11 @@ void startNetwork() async {
   net.setUserID(id);
   net.setServerURL('wss://10.0.2.2:8765');
   net.clientSock.stream.listen((data) {
-    // Replace with a call to my handler function.
-    print(data);
+    print("UI received network message: " + data.toString());
+    Handler.handleMessage(data);
   });
   print("Finished setting up the listener for the UI!");
-
+  net.connectAndAuth();
 }
 
 class DMAFT extends StatelessWidget {
@@ -77,7 +77,7 @@ class DMAFT extends StatelessWidget {
   // This widget is the root of the DMAFT app.
   @override
   Widget build(BuildContext context) {
-    
+
     startNetwork();
     
     return MaterialApp(
@@ -95,7 +95,7 @@ class DMAFT extends StatelessWidget {
 // Handles the sending and receiving of messages over the network and updates the client DB accordingly.
 class Handler {
 
-  void handleMessage(Map data) {
+  static void handleMessage(Map data) {
 
     final ClientDB databaseService = ClientDB.instance;
 
