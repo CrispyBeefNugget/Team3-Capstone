@@ -216,6 +216,33 @@ class Network {
     }
   }
 
+  //Method: leaveConversation
+  Future<void> leaveConversation(String conversationID) async {
+    if (!_isUiListening()) {
+      throw NetworkStreamListenerRequired();
+    }
+    if (_authInProgress) {
+      print("Authentication is already in progress, waiting...");
+      waitUntilConnected().then((data) {
+        print("Making the leave conversation request!");
+        var requestJson = _constructLeaveConversationRequest(conversationID);
+        print(requestJson);
+        print("Sending the leave conversation request now!");
+        _serverSock!.sink.add(requestJson);
+      });
+    }
+    else {
+      print("Authentication not started yet, starting...");
+      connectAndAuth().then((data) {
+        print("Making the leave conversation request!");
+        var requestJson = _constructLeaveConversationRequest(conversationID);
+        print(requestJson);
+        print("Sending the leave conversation request now!");
+        _serverSock!.sink.add(requestJson);
+      });
+    }
+  }
+
   //Method: searchServerUsers
   Future<void> searchServerUsers(String nameOrID, bool searchByID) async {
     if (!_isUiListening()) {
@@ -442,6 +469,13 @@ class Network {
 
       case 'INCOMINGMESSAGE':
         return _handleIncomingMsg(parsedMsg);
+      
+      case 'NEWCONVERSATIONCREATED':
+        return _handleNewConvoMsg(parsedMsg);
+
+      case 'USERLEFT':
+        return _handleUserLeftMsg(parsedMsg);
+
     }
   }
 
@@ -506,7 +540,7 @@ Each of these handles a specific kind of message.
       print("Network._handleSearchResponse(): Received invalid response from server!");
       responseMsg['Successful'] = false;
     }
-    //Finish this later.
+    clientSock.sink.add(responseMsg);
   }
 
   void _handleIncomingMsg(Map serverMsg) {
@@ -523,6 +557,14 @@ Each of these handles a specific kind of message.
   void _handleNewConvoMsg(Map serverMsg) {
     if (!_isValidNewConvoMsg(serverMsg)) {
       print("Received new conversation message but it is invalid.");
+      return;
+    }
+    clientSock.sink.add(serverMsg);
+  }
+
+  void _handleUserLeftMsg(Map serverMsg) {
+    if (!_isValidUserLeftMsg(serverMsg)) {
+      print("Received user left conversation message but it is invalid.");
       return;
     }
     clientSock.sink.add(serverMsg);
@@ -656,7 +698,6 @@ Can vary from data integrity checks to sub-functions.
   bool _isValidNewConvoMsg(Map responseData) {
     const requiredKeys = [
       'Command',
-      'OriginalReceiptTimestamp',
       'ConversationId',
       'CreatorId',
       'Members',
@@ -665,6 +706,9 @@ Can vary from data integrity checks to sub-functions.
       if (!responseData.containsKey(rkey)) {
         print("Required key " + rkey + " is missing!");
         return false;
+      }
+      if (rkey == 'Members') { //Don't check for Members to be a String value
+        continue;
       }
       if (responseData[rkey] is! String) {
         print("Required key " + rkey + " does not have a String value!");
@@ -684,6 +728,26 @@ Can vary from data integrity checks to sub-functions.
         return false;
       }
     }
+    return true;
+  }
+
+  bool _isValidUserLeftMsg(Map responseData) {
+    const requiredKeys = [
+      'Command',
+      'ConversationId',
+      'LeavingUserId',
+      ];
+    for (final rkey in requiredKeys) {
+      if (!responseData.containsKey(rkey)) {
+        print("Required key " + rkey + " is missing!");
+        return false;
+      }
+      if (responseData[rkey] is! String) {
+        print("Required key " + rkey + " does not have a String value!");
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -799,6 +863,24 @@ Can vary from data integrity checks to sub-functions.
     }
     const encoder = JsonEncoder();
     return encoder.convert(newConversationRequest);
+  }
+
+  String _constructLeaveConversationRequest(String conversationID, {String? operationID = null}) {
+    final currentTime = DateTime.timestamp();
+    const b64 = Base64Encoder();
+    final leaveConversationRequest = {
+      'Command':'LEAVECONVERSATION',
+      'TokenId':_tokenID,
+      'TokenSecret': b64.convert(_tokenSecret!),
+      'UserId':_userID,
+      'ConversationId':conversationID,
+      'ClientTimestamp': (currentTime.millisecondsSinceEpoch / 1000).toInt() //Server only accepts second-level accuracy and Dart doesn't provide that natively
+    };
+    if (operationID != null) {
+      leaveConversationRequest['OperationId'] = operationID;
+    }
+    const encoder = JsonEncoder();
+    return encoder.convert(leaveConversationRequest);
   }
 
   String _constructSendTextMessageRequest(String conversationID, String msgToSend, String msgID, {String? operationID = null}) {

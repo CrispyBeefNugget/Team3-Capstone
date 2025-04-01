@@ -560,25 +560,24 @@ def doesConversationExist(*, connection: sqlite3.Connection, conversationID: str
 
 
 #Attempts to remove a user from the userlist in a conversation.
-#Returns true if successful and false if not.
+#Returns the list of remaining participants if successful, and None if failed.
+#Raises RuntimeError if the database fails to retrieve the conversation after validating its existence.
 def removeUserFromConversation(*, connection: sqlite3.Connection, conversationID: str, userID: str):
     #Five general steps to this:
     #1. Ensure that the specified conversation actually exists.
     #2. Ensure that the specified user actually exists.
     #3. Remove the user from the conversation in the Conversations table.
-    #4. Remove the conversation ID from the RegisteredUsers table.
-    #5. Notify everyone.
-    
-    raise NotImplementedError
+    #4. Remove the conversation ID from the RegisteredUsers table. (This isn't done as conversation creation doesn't perform this step).
+    #5. Notify everyone (leave that to tlsServer.py).
 
     #First, ensure the conversation exists.
     try:
         if not doesConversationExist(connection=connection, conversationID=conversationID):
             print("dmaftServerDB.removeUserFromConversation(): The specified conversation doesn't exist!")
-            return False
+            return None
     except:
         print("dmaftServerDB.removeUserFromConversation(): Failed to search the conversations table!")
-        return False
+        return None
     
     #Now, ensure the user exists.
     try:
@@ -586,14 +585,35 @@ def removeUserFromConversation(*, connection: sqlite3.Connection, conversationID
             print("dmaftServerDB.removeUserFromConversation(): The specified user doesn't exist!")
     except:
         print("dmaftServerDB.removeUserFromConversation(): Failed to search the registered users table!")
-        return False
+        return None
     
     #Remove the user from the conversations table first.
     #This ensures that any future messages won't be routed to this user.
     #To do this: get the conversation, parse and modify the list, then serialize it and save the modified result.
     conversations = getConversationByID(connection=connection, conversationID=conversationID)
     if conversations is None:
-        return 
+        raise RuntimeError("dmaftServerDB.removeUserFromConversation(): Failed to get conversation", conversationID, "after validating its existence!")
+    
+    if len(conversations) != 1:
+        raise RuntimeError("dmaftServerDB.removeUserFromConversation(): Expected 1 conversation with ID", conversationID, "but found", str(len(conversations)), "!")
+    
+    record = conversations[0]
+    participants = record[1]
+    participantList = json.loads(participants)
+    if userID in participantList:
+        participantList.remove(userID)
+    
+    newParticipants = json.dumps(participantList)
+    try:
+        with connection:
+            updateConvoStmt = 'UPDATE tblConversations SET Participants = ? WHERE ConversationID = ?;'
+            connection.execute(updateConvoStmt, (newParticipants, conversationID))
+            connection.commit()
+        return participantList
+    except Exception as e:
+        print("Failed to remove user", userID, "from conversation", conversationID, ":", e)
+        return None
+    
 
 #MAILBOX DATA
 

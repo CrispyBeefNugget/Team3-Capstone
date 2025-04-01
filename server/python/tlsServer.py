@@ -43,6 +43,37 @@ def getRSAPublicKeySHA512(pubkey: rsa.RSAPublicKey):
     sha512Thumbprint = hashlib.sha512(pubBytes).hexdigest()
     return sha512Thumbprint
 
+
+#Send out delayed messages given a connected client's ID.
+#This ONLY works if the user is online and associated with an active websocket.
+def sendOldMessages(userID: str):
+    global connectedClients
+    dbConn = dmaftServerDB.startDB()
+    try:
+        if not dmaftServerDB.doesUserExist(connection=dbConn, userID=userID):
+            print("tlsServer.sendOldMessages(): User", userID, "does not exist!")
+            return False
+    except:
+        print("tlsServer.sendOldMessages(): Failed to validate the given user ID!")
+        return False
+    
+    oldMessages = dmaftServerDB.getMsgsForUser(connection=dbConn, userID=userID)
+    if oldMessages is None:
+        print("tlsServer.sendOldMessages(): Failed to get a list of old messages for user", userID, "!")
+        return False
+    
+    if len(oldMessages) == 0:
+        print("tlsServer.sendOldMessages(): Found no new messages for user", userID, "stopping...")
+        return True
+    
+    for message in oldMessages:
+        msgData = message[4]
+        connectedClients.sendMsgToUser(userID, msgData)
+
+    return True
+        
+
+
 #Message handlers
 def handlePingMsg(clientRequest: dict, websocket: websockets.asyncio.server.ServerConnection):
     global connectedClients
@@ -63,6 +94,8 @@ def handlePingMsg(clientRequest: dict, websocket: websockets.asyncio.server.Serv
             authSuccessful = not ('ErrorType' in result.keys())
             if authSuccessful:
                 connectedClients.setUserOnSocket(websocket, result['UserId'])
+                #Deliver all old messages too
+                sendOldMessages(result['UserId'])
 
     clientRequest['Successful'] = True
     clientRequest['ServerTimestamp'] = time.time()
@@ -198,6 +231,62 @@ def handleNewConvoRequest(clientRequest: dict):
     clientRequest['Successful'] = True
     clientRequest['ServerTimestamp'] = int(time.time())
     clientRequest['NewConversationId'] = conversationID
+    return clientRequest
+
+
+def handleLeaveConvoRequest(clientRequest: dict):
+    #Make sure we have a valid request
+    keys = set(clientRequest.keys())
+    expectedKeys = {'Command','ConversationId','UserId'}
+    if not expectedKeys.issubset(keys):
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more required JSON keys are missing from the request.')
+
+    sanityChecks = [
+        type(clientRequest['Command']) == str,
+        type(clientRequest['ConversationId']) == str,
+        type(clientRequest['UserId']) == str,
+    ]
+
+    if False in sanityChecks:
+        return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One of the JSON keys is malformed or missing a required value.')
+
+
+    #Remove the user from the conversation
+    dbConn = dmaftServerDB.startDB()
+    try:
+        remainingUsers = dmaftServerDB.removeUserFromConversation(
+            connection=dbConn, 
+            conversationID=clientRequest['ConversationId'],
+            userID=clientRequest['UserId'],
+            )
+        if remainingUsers is None:
+            dmaftServerDB.closeDB(dbConn)
+            return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to remove the user from the specified conversation.')
+    except:
+        dmaftServerDB.closeDB(dbConn)
+        return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to remove the user from the specified conversation. The server database may be corrupt.')
+
+    dmaftServerDB.closeDB(dbConn)
+
+    #Now notify everyone else about the change.
+    convoChangeData = {
+        'Command':'USERLEFT',
+        'LeavingUserId':clientRequest['UserId'],
+        'ConversationId':clientRequest['ConversationId'],
+        'ServerTimestamp': int(time.time())
+    }
+    convoChangeMsg = json.dumps(convoChangeData)
+    offlineUsers = connectedClients.broadcastToUsers(remainingUsers, convoChangeMsg)
+
+    #If any recipients missed the notification, store it in the mailbox to send to them later.
+    #Mark the conversation as SYSTEM so that we know it isn't a user-sent message.
+    if len(offlineUsers) > 0:
+        dbConn = dmaftServerDB.startDB()
+        for user in offlineUsers:
+            dmaftServerDB.addToMailbox(connection=dbConn, conversationID='SYSTEM', recipientID=user, msgDict=convoChangeMsg, expireTime=(int(time.time()) + 1209600)) #Give it two weeks to send out
+
+    clientRequest['Successful'] = True
+    clientRequest['ServerTimestamp'] = int(time.time())
     return clientRequest
 
 
