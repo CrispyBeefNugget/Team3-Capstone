@@ -678,6 +678,7 @@ class ClientDB{
           message: e[_msglogsMessageName] as Uint8List,
         )
       ).toList().cast<MsgLog>(); //Cast dynamic type data to Contact type.
+    msglogs.sort((a, b) => a.rcvTime.compareTo(b.rcvTime));
     return msglogs;
   }
 
@@ -759,10 +760,11 @@ class ClientDB{
   Future<String> generateMsgID(String convoID) async{
     //Fetch all message logs for the given conversation.
     List<MsgLog> messages = await getMsgLogs(convoID);
-    //Until a suitable ID is generated, repeat this.
+    //Create a UUID.
     var uuidGen = Uuid();
     String newID = "";
     bool suitableID = false;
+    //Until a suitable ID is generated, repeat this.
     while(suitableID == false){
       //Generate an ID.
       newID = uuidGen.v1();

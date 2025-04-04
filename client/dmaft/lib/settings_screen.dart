@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'package:dmaft/client_db.dart';
+import 'package:dmaft/client_file_access.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -410,6 +411,8 @@ class MessageHistoryScreen extends StatefulWidget {
 }
 
 class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
+  final FileAccess fileService = FileAccess.instance;
+  
   @override
   Widget build(BuildContext context) {
       return Scaffold(
@@ -426,32 +429,44 @@ class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-                Container(
-                  width: 500,
-                  decoration: BoxDecoration(
-                    border: Border.all(),
-                  ),
-                  child: Text(
-                    "If message history control is disabled, messages will be stored indefinitely until manually deleted.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 20,
-                    ),
-                  ),
+              //Message history info text box
+              Container(
+                width: 500,
+                decoration: BoxDecoration(
+                  border: Border.all(),
                 ),
-                TextFormField(
-                  decoration: InputDecoration(
-                    icon: Icon(Icons.calendar_month),
-                  ),
-                  initialValue: "20", 
+                child: Text(
+                  "If message history control is disabled, messages will be stored indefinitely until manually deleted.",
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 20,
                   ),
-                  onSaved: (String? daysHistory){
-                    //Write new value to db?
-                  },
-                ), 
-            ],
+                ),
+              ),
+              //Message history text field
+              FutureBuilder(
+                future: fileService.getSettings(),
+                builder: (BuildContext context, AsyncSnapshot snapshot) {
+                  if (snapshot.hasData) {
+                    return TextFormField(
+                      decoration: InputDecoration(
+                        icon: Icon(Icons.calendar_month),
+                      ),
+                      initialValue: snapshot.data["messageHistory"], 
+                      style: TextStyle(
+                        fontSize: 20,
+                      ),
+                      
+                    );
+                  }
+                  else {
+                    return Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+                }
+              ), 
+            ], //Column children
           ),
         ),
       );

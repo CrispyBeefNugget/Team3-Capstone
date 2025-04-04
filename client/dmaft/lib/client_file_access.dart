@@ -55,8 +55,6 @@ class FileAccess {
       settingsFile.writeAsString("""
         {
         "historyDuration": -1,
-        "test1": "apples",
-        "test2": "oranges"
         }
       """);
     }
