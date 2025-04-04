@@ -49,19 +49,25 @@ void startNetwork() async {
   final FileAccess fileHelper = FileAccess.instance;
   final net = Network();
 
-  final id = await fileHelper.getUUID();
-  final rsalist = await fileHelper.getRSAKeys();
-  RSAPrivateKey privateKey = RSAPrivateKey(
-    BigInt.parse(rsalist['n']!),
-    BigInt.parse(rsalist['d']!),
-    BigInt.parse(rsalist['p']!),
-    BigInt.parse(rsalist['q']!)
-    );
-  print(rsalist);
-  print('--------------------------');
+  try {
+    final id = await fileHelper.getUUID();
+    final rsalist = await fileHelper.getRSAKeys();
+    RSAPrivateKey privateKey = RSAPrivateKey(
+      BigInt.parse(rsalist['n']!),
+      BigInt.parse(rsalist['d']!),
+      BigInt.parse(rsalist['p']!),
+      BigInt.parse(rsalist['q']!)
+      );
+    print(rsalist);
+    print('--------------------------');
 
-  net.setUserKeypair(privateKey);
-  net.setUserID(id);
+    net.setUserKeypair(privateKey);
+    net.setUserID(id);
+  }
+  catch(e) {
+    print("WARNING: Failed to retrieve user ID and keypair. Will request a new identity from server.");
+  }
+
   net.setServerURL('wss://10.0.2.2:8765');
   net.clientSock.stream.listen((data) {
     print("UI received network message: " + data.toString());
@@ -96,7 +102,7 @@ class DMAFT extends StatelessWidget {
 // Handles the sending and receiving of messages over the network and updates the client DB accordingly.
 class Handler {
 
-  static void handleMessage(Map data) {
+  static void handleMessage(Map data) async {
 
     final ClientDB databaseService = ClientDB.instance;
 
@@ -130,6 +136,19 @@ class Handler {
         databaseService.addMsgLog(msglog);
         
         break;
+
+      case 'NEWCREDENTIALS':
+        const requiredKeys = ['UserId', 'p', 'q', 'n', 'd', 'e'];
+        for (final rkey in requiredKeys) {
+          if (!data.containsKey(rkey)) {
+            print("NEWCREDENTIALS Message: Required key $rkey is missing!");
+            return;
+          }
+        }
+        final FileAccess fileHelper = FileAccess.instance;
+        await fileHelper.setUUID(data['UserId']);
+        await fileHelper.setRSAKeys(data['p'], data['q'], data['n'], data['d'], data['e']);
+        print("UI saved credentials for new user " + data['UserId'] + "!");
       default:
     }
   }

@@ -22,12 +22,12 @@ import handleAuth
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
 # Nigel's path
-# ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
-# ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
+ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
+ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
 
 # Jeremey's path
-ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
-ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
+#ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
+#ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
 
 # Ben's path
 # ssl_cert = 'C:\Users\Ben\Desktop\dmaft-tls_cert.pem'

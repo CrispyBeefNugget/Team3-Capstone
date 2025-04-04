@@ -374,6 +374,9 @@ class Network {
     if (_authInProgress) return false; //Another copy of this method is trying to authenticate. Stop.
     
     _authInProgress = true;
+    if ((_userID == null) && (_privateKey == null)) {
+      initRandomUserKeys();
+    }
     await _connect(_serverURL);
     
     //Generate and send a challenge BEFORE configuring the listener.
@@ -516,7 +519,7 @@ Each of these handles a specific kind of message.
       handleJunk();
       return;
     }
-    _userID = responseMsg['UserId'];
+    //_userID = responseMsg['UserId'];
     if (! _isTokenPresent(responseMsg)) {
       //We need a proper token before we can communicate.
       //Restart the authentication process, but as a registered user.
@@ -532,7 +535,24 @@ Each of these handles a specific kind of message.
     var sink = _serverSock!.sink;
     print("We're ready to close the connection now!");
     _disconnect(true);
-    print("Client should be disconnected; exiting _handleAuthResponse()...");
+    print("Client should be disconnected from server now.");
+
+    //Save the newly created credentials if we just registered
+    if (_userID == null) {
+      _userID = responseMsg['UserId'];
+      final newCredsData = {
+        'Command':'NEWCREDENTIALS',
+        'UserId':_userID,
+        'p':_privateKey!.p.toString(),
+        'q':_privateKey!.q.toString(),
+        'n':_privateKey!.n.toString(),
+        'e':_privateKey!.publicExponent.toString(),
+        'd':_privateKey!.privateExponent.toString(),
+      };
+      clientSock.sink.add(newCredsData);
+      print("Successfully sent new credentials to UI!");
+    }
+    print("Exiting _handleAuthResponse()...");
   }
 
   void _handleSearchResponse(Map responseMsg) {
