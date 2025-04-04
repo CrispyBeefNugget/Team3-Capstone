@@ -79,6 +79,7 @@ class DMAFT extends StatelessWidget {
   Widget build(BuildContext context) {
 
     startNetwork();
+    // setIdAndKeyPair();
     
     return MaterialApp(
       theme: ThemeData(
@@ -125,7 +126,7 @@ class Handler {
         if (data['MessageType'] == 'Text') {
           messageContent = utf8.encode(messageContent);
         }
-        MsgLog msglog = MsgLog(convoID: data['ConversationId'], msgID: data['MessageId'], msgType: data['MessageType'], senderID: data['SenderId'], rcvTime: data['OriginalReceiptTimestamp'].toString(), message: messageContent);
+        MsgLog msglog = MsgLog(convoID: data['ConversationId'], msgID: data['MessageId'], msgType: data['MessageType'], senderID: data['SenderId'], rcvTime: DateTime.fromMillisecondsSinceEpoch(1000 * int.parse(data['OriginalReceiptTimestamp'].toString())).toString(), message: messageContent);
         databaseService.addMsgLog(msglog);
         
         break;
