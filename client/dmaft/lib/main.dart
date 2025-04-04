@@ -79,7 +79,7 @@ class DMAFT extends StatelessWidget {
   Widget build(BuildContext context) {
 
     startNetwork();
-    // setIdAndKeyPair();
+    // setIdAndKeyPair(); // Run this on the second client.
     
     return MaterialApp(
       theme: ThemeData(
@@ -110,7 +110,7 @@ class Handler {
           }
         }
 
-        Conversation convo = Conversation(convoID: data['ConversationId'], convoMembers: data['Members'], lastModified: DateTime.now().toString());   
+        Conversation convo = Conversation(convoID: data['ConversationId'], convoMembers: data['Members'], lastModified: DateTime.now().toUtc().toString());
         databaseService.addConvo(convo);
 
       case 'INCOMINGMESSAGE':
