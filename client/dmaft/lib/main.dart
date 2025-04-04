@@ -132,7 +132,7 @@ class Handler {
         if (data['MessageType'] == 'Text') {
           messageContent = utf8.encode(messageContent);
         }
-        MsgLog msglog = MsgLog(convoID: data['ConversationId'], msgID: data['MessageId'], msgType: data['MessageType'], senderID: data['SenderId'], rcvTime: DateTime.fromMillisecondsSinceEpoch(1000 * int.parse(data['OriginalReceiptTimestamp'].toString())).toString(), message: messageContent);
+        MsgLog msglog = MsgLog(convoID: data['ConversationId'], msgID: data['MessageId'], msgType: data['MessageType'], senderID: data['SenderId'], rcvTime: DateTime.fromMillisecondsSinceEpoch(1000 * int.parse(data['OriginalReceiptTimestamp'].toString()), isUtc: true).toString(), message: messageContent);
         databaseService.addMsgLog(msglog);
         
         break;

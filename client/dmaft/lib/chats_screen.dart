@@ -71,7 +71,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
     List<MsgLog> logs = await databaseService.getMsgLogs(conversationId);
     print('This is in the getChatMessages method:');
     for (int i = 0; i < logs.length; i++) {
-      print(logs[i].senderID);
+      print(logs[i].senderID + logs[i].rcvTime);
     }
     return logs;
   }
