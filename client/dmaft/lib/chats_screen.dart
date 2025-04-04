@@ -69,6 +69,10 @@ class _ChatsScreenState extends State<ChatsScreen> {
   // Gets the messages of a specific conversation from the client database.
   Future<List<MsgLog>> getChatMessages(String conversationId) async {
     List<MsgLog> logs = await databaseService.getMsgLogs(conversationId);
+    print('This is in the getChatMessages method:');
+    for (int i = 0; i < logs.length; i++) {
+      print(logs[i].senderID);
+    }
     return logs;
   }
 
@@ -285,7 +289,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                               ),
 
                               FutureBuilder( // The messages portion of the conversation.
-                                future: getChatMessages(_filteredList.list[index].convoID),
+                                future: Future.wait([getChatMessages(_filteredList.list[index].convoID), getUserID()]),
                                 builder: (BuildContext context2, AsyncSnapshot snapshot2) {
 
                                   if (snapshot2.connectionState != ConnectionState.done) { // Left off here on trying to get the FutureBuilder to refresh.
@@ -299,11 +303,16 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                       child: SizedBox(
                                         child: ListView.builder(
                                           itemCount: messages.length,
-                                          itemBuilder: (context3, index2) => ListTile(
-                                            title: Text(utf8.decode(messages[index2].message)),
-                                            subtitle: Text(messages[index2].rcvTime),
-                                            titleAlignment: ListTileTitleAlignment.center,
-                                          ),
+                                          itemBuilder: (context3, index2) {
+                                            String userID = snapshot2.data[1];
+                                            DateTime timestamp = DateTime.parse(messages[index2].rcvTime).toLocal();
+                                            List<String> monthMap = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                            return ChatBubble(
+                                              message: utf8.decode(messages[index2].message),
+                                              isSentByMe: (messages[index2].senderID == userID),
+                                              rcvTime: "${timestamp.hour.toString()}:${(timestamp.minute < 10) ? '0' : ''}${timestamp.minute.toString()} ${monthMap[timestamp.month - 1]} ${timestamp.day.toString()}",
+                                            );
+                                          } 
                                         ),
                                       ),
                                     );
@@ -344,7 +353,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                               print(messageContent.text);                                              
                                               String newMsgID = snapshot2.data[0];
                                               String userID = snapshot2.data[1];
-                                              MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toString(), message: utf8.encode(messageContent.text));
+                                              MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toUtc().toString(), message: utf8.encode(messageContent.text));
                                               databaseService.addMsgLog(log);
                                               Network net = Network();
                                               net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text, newMsgID);
@@ -423,7 +432,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 ),
 
                                 FutureBuilder( // The messages portion of the conversation.
-                                  future: getChatMessages(conversationList.list[index].convoID),
+                                  future: Future.wait([getChatMessages(conversationList.list[index].convoID), getUserID()]),
                                   builder: (BuildContext context2, AsyncSnapshot snapshot2) {
 
                                     if (snapshot2.hasData) { // Messages are loaded in with the ListView.builder.
@@ -431,11 +440,16 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                         child: SizedBox(
                                           child: ListView.builder(
                                             itemCount: messages.length,
-                                            itemBuilder: (context3, index2) => ListTile(
-                                              title: Text(utf8.decode(messages[index2].message)),
-                                              subtitle: Text(messages[index2].rcvTime),
-                                              titleAlignment: ListTileTitleAlignment.center,
-                                            ),
+                                            itemBuilder: (context3, index2) {
+                                              String userID = snapshot2.data[1];
+                                              DateTime timestamp = DateTime.parse(messages[index2].rcvTime).toLocal();
+                                              List<String> monthMap = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                              return ChatBubble(
+                                                message: utf8.decode(messages[index2].message),
+                                                isSentByMe: (messages[index2].senderID == userID),
+                                                rcvTime: "${timestamp.hour.toString()}:${(timestamp.minute < 10) ? '0' : ''}${timestamp.minute.toString()} ${monthMap[timestamp.month - 1]} ${timestamp.day.toString()}",
+                                              );
+                                            }
                                           ),
                                         ),
                                       );
@@ -476,7 +490,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                                 print(messageContent.text);
                                                 String newMsgID = snapshot2.data[0];
                                                 String userID = snapshot2.data[1];
-                                                MsgLog log = MsgLog(convoID: conversationList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toString(), message: utf8.encode(messageContent.text)); // Change to the generated IDs provided by Ben's methods.
+                                                MsgLog log = MsgLog(convoID: conversationList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toUtc().toString(), message: utf8.encode(messageContent.text)); // Change to the generated IDs provided by Ben's methods.
                                                 databaseService.addMsgLog(log);
                                                 Network net = Network();
                                                 net.sendTextMessage(conversationList.list[index].convoID, messageContent.text, newMsgID);
@@ -541,3 +555,55 @@ class _ChatsScreenState extends State<ChatsScreen> {
     );
   }
 }
+
+// Courtesy of https://maxim-gorin.medium.com/advanced-flutter-ui-how-to-build-a-chat-app-with-custom-message-bubbles-4f90282b8be0
+class ChatBubble extends StatelessWidget {
+  final String message;
+  final bool isSentByMe;
+  final String rcvTime;
+
+  ChatBubble({required this.message, required this.isSentByMe, required this.rcvTime});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+        padding: EdgeInsets.all(10),
+        constraints: BoxConstraints(maxWidth: 250),
+        decoration: BoxDecoration(
+          color: isSentByMe ? Color.fromRGBO(4, 150, 255, 1) : Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(15),
+            topRight: Radius.circular(15),
+            bottomLeft: isSentByMe ? Radius.circular(15) : Radius.zero,
+            bottomRight: isSentByMe ? Radius.zero : Radius.circular(15),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 5,
+            ),
+          ],
+        ),
+        child: ListTile(
+          title: Text(
+            message,
+            style: TextStyle(
+              color: isSentByMe ? Colors.white : Colors.black87,
+            ),
+            softWrap: true,  // Ensures line breaks are handled properly
+          ),
+          subtitle: Text(
+            rcvTime,
+            style: TextStyle(
+              color: isSentByMe ? Colors.white : Colors.black87,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
