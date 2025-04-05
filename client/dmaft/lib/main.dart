@@ -24,7 +24,27 @@ void main() {
   runApp(const DMAFT());
 }
 
-void setIdAndKeyPair() async {
+void setIdAndKeyPair1() async {
+
+  final FileAccess fileHelper = FileAccess.instance;
+
+  // Old
+  final pair2 = testKeypair1();
+  final id2 = testID1();
+
+  final privateKey = pair2.privateKey;
+  final p = privateKey.p.toString();
+  final q = privateKey.q.toString();
+  final n = privateKey.n.toString();
+  final d = privateKey.privateExponent.toString();
+  final e = privateKey.publicExponent.toString();
+
+  // Attempt to new
+  await fileHelper.setUUID(id2);
+  await fileHelper.setRSAKeys(p, q, n, d, e);
+}
+
+void setIdAndKeyPair2() async {
 
   final FileAccess fileHelper = FileAccess.instance;
 
@@ -85,7 +105,8 @@ class DMAFT extends StatelessWidget {
   Widget build(BuildContext context) {
 
     startNetwork();
-    // setIdAndKeyPair(); // Run this on the second client.
+    //setIdAndKeyPair1(); // Run this on the first client.
+    //setIdAndKeyPair2(); // Run this on the second client.
     
     return MaterialApp(
       theme: ThemeData(
