@@ -1,8 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 
 import 'package:dmaft/client_db.dart';
 import 'package:dmaft/client_file_access.dart';
@@ -406,12 +404,18 @@ class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
                 if (snapshot.hasData) {
                   return Row(
                     mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
+                      Flexible(
+                        child: Text(
+                          style: TextStyle(fontSize: 20),
+                          "Delete messages after "
+                        ),
+                      ),
                       Flexible(
                         child: TextFormField(
                           decoration: InputDecoration(
-                            icon: Icon(Icons.calendar_month),
+          
                             
                           ),
                           style: TextStyle(
