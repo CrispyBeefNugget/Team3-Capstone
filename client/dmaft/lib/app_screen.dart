@@ -1,7 +1,7 @@
 import 'dart:ffi';
 
 import 'package:flutter/material.dart';
-
+import 'package:dmaft/network.dart';
 import 'package:dmaft/contacts_screen.dart';
 import 'package:dmaft/chats_screen.dart';
 import 'package:dmaft/settings_screen.dart';
@@ -107,11 +107,17 @@ class _AppScreenState extends State<AppScreen> {
                         TextField(
                           decoration: const InputDecoration(
                             hintText: 'Search User',
-                          ),
+                          )
+                          ,
+                          onSubmitted: (String str) async {
+                            final net = Network();
+                            List results = await net.searchServerUsers(str, false);
+                            print(results);
+                          },
                         ),
 
                         // Insert FutureBuilder + ListBuilder here that queries the network for users based on username.
-
+                    
                       ],
                     ),
                   )),
