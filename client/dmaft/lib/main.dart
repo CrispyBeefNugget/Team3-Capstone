@@ -74,10 +74,7 @@ void startNetwork() async {
     Handler.handleMessage(data);
   });
   print("Finished setting up the listener for the UI!");
-  net.connectAndAuth().then((value) async {
-    final results = await net.searchServerUsers('550516DA-9F37-483F-AB87-A0DAA19203D9', true);
-    print('Search results: $results');
-  },);
+  net.connectAndAuth();
 }
 
 class DMAFT extends StatelessWidget {
