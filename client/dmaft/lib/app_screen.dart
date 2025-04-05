@@ -16,7 +16,7 @@ class AppScreen extends StatefulWidget {
 
 class _AppScreenState extends State<AppScreen> {
 
-  late int unread;
+  // late int unread; // No longer implemented due to time constraints.
 
   int myIndex = 1; // Default page on app startup (Chats Screen).
   List<Widget> widgetList = const [
@@ -53,22 +53,11 @@ class _AppScreenState extends State<AppScreen> {
     getUser().then((response) {
       user = response;
     });
-    getMessageCount().then((response) {
-      unread = response;
-    });
+    // getMessageCount().then((response) { // No longer implemented due to time constraints.
+    //   unread = response;
+    // });
     super.initState();
-    //_incrementCounter();
   }
-
-  // void _incrementCounter() async {
-  //   while (true) {
-  //     await Future.delayed(Duration(seconds: 5)); // Might use as inspiration to update the notification counter.
-  //     ChatTestList.addToList('Test Test');
-  //     setState(() {
-  //       unread = ChatTestList.getSize();
-  //     });
-  //   }
-  // }
 
   // Returns the contact information of the current user.
   Future<Contact> getUser() async {
@@ -76,11 +65,11 @@ class _AppScreenState extends State<AppScreen> {
     return currentUser;
   }
 
-  // Returns the number of messages that the user has. This will be changed to the number of unread messages (need to differentiate between read and unread messages).
-  Future<int> getMessageCount() async {
-    List<Conversation> dbConversations = await databaseService.getAllConvos();
-    return dbConversations.length;
-  }
+  // Returns the number of conversations that the user has (no longer implemented due to time constraints).
+  // Future<int> getMessageCount() async {
+  //   List<Conversation> dbConversations = await databaseService.getAllConvos();
+  //   return dbConversations.length;
+  // }
 
   @override
   void dispose() {
@@ -132,59 +121,59 @@ class _AppScreenState extends State<AppScreen> {
               icon: const Icon(Icons.add),
           )
           : const SizedBox(), // Only the Chats Screen while have the add button.
-        actions: <Widget>[
-          IconButton(
-            onPressed: () {
+        // actions: <Widget>[ // No longer implemented due to time constraints.
+        //   IconButton(
+        //     onPressed: () {
 
-              // Shows the details of the user.
-              showDialog<String>(
-                context: context,
-                builder: (BuildContext context) => FutureBuilder(
-                  future: getUser(),
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    if (snapshot.hasData) {
-                      return AlertDialog(
-                        title: Text(user.name),
-                        content: Column(
-                          children: [
-                            Center(
-                              child: CircleAvatar(
-                                backgroundImage: Image.memory(user.pic).image,
-                              ),
-                            ),
-                            Text(user.id),
-                            Text(user.pronouns),
-                            Text(user.bio),
-                          ],
-                        ),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, 'Done'),
-                            child: const Text('Done'),
-                          ),
-                        ],
-                      );
-                    }
-                    else {
-                      return AlertDialog(
-                        title: const Text('Loading User'),
-                        content: const Text('Loading Details'),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, 'Done'),
-                            child: const Text('Done'),
-                          ),
-                        ],
-                      );
-                    }
-                  }
-                )
-              );  
+        //       // Shows the details of the user.
+        //       showDialog<String>(
+        //         context: context,
+        //         builder: (BuildContext context) => FutureBuilder(
+        //           future: getUser(),
+        //           builder: (BuildContext context, AsyncSnapshot snapshot) {
+        //             if (snapshot.hasData) {
+        //               return AlertDialog(
+        //                 title: Text(user.name),
+        //                 content: Column(
+        //                   children: [
+        //                     Center(
+        //                       child: CircleAvatar(
+        //                         backgroundImage: Image.memory(user.pic).image,
+        //                       ),
+        //                     ),
+        //                     Text(user.id),
+        //                     Text(user.pronouns),
+        //                     Text(user.bio),
+        //                   ],
+        //                 ),
+        //                 actions: <Widget>[
+        //                   TextButton(
+        //                     onPressed: () => Navigator.pop(context, 'Done'),
+        //                     child: const Text('Done'),
+        //                   ),
+        //                 ],
+        //               );
+        //             }
+        //             else {
+        //               return AlertDialog(
+        //                 title: const Text('Loading User'),
+        //                 content: const Text('Loading Details'),
+        //                 actions: <Widget>[
+        //                   TextButton(
+        //                     onPressed: () => Navigator.pop(context, 'Done'),
+        //                     child: const Text('Done'),
+        //                   ),
+        //                 ],
+        //               );
+        //             }
+        //           }
+        //         )
+        //       );  
 
-            },
-            icon: const Icon(Icons.person),
-          ),
-        ],
+        //     },
+        //     icon: const Icon(Icons.person),
+        //   ),
+        // ],
       ),
       
       // Body of the app screen changes depending on which tab the user has selected.
@@ -212,17 +201,18 @@ class _AppScreenState extends State<AppScreen> {
 
           NavigationDestination( // Conversations tab.
             icon: Badge(
-              label: FutureBuilder(
-                future: getMessageCount(),
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  if (snapshot.hasData) {
-                    return Text('$unread');
-                  }
-                  else {
-                    return Text('?');
-                  }
-                },
-              ),             
+              label: Text(''),
+              // FutureBuilder( // No longer implemented due to time constraints.
+              //   future: getMessageCount(),
+              //   builder: (BuildContext context, AsyncSnapshot snapshot) {
+              //     if (snapshot.hasData) {
+              //       return Text('$unread');
+              //     }
+              //     else {
+              //       return Text('?');
+              //     }
+              //   },
+              // ),             
               child: Icon(Icons.message_rounded),
             ),
             label: 'Conversations',
@@ -240,8 +230,3 @@ class _AppScreenState extends State<AppScreen> {
     );
   }
 }
-
-// class ChatsScreenController extends ChangeNotifier { // Might need change notifier for updating the unread count.
-//   List<String> _testList = ChatTestList.getList();
-
-// }

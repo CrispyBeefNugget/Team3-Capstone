@@ -71,12 +71,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: Icon(Icons.alternate_email_outlined),
                   onTap: () {
-                    Navigator.of(context).push(
+                    Navigator.of(context)
+                    .push(
                       MaterialPageRoute(builder: (context) => UsernameScreen(user: user)), // Redirects to the widget that handles changing the user's username.
-                    );
+                    )
+                    .then((_) {
+
+                    });
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Username'),
+                  subtitle: Text(user.name),
                 ),
 
                 ListTile(
@@ -88,6 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Bio'),
+                  subtitle: Text(user.bio),
                 ),
 
                 ListTile(
@@ -99,6 +105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Pronouns'),
+                  subtitle: Text(user.pronouns),
                 ),
 
                 ListTile(
@@ -182,31 +189,17 @@ class _UsernameScreenState extends State<UsernameScreen> {
 
   final TextEditingController _usernameController = TextEditingController();
   final ClientDB databaseService = ClientDB.instance;
-  bool saveChanges = false;
 
   @override
   void initState() {
-    _usernameController.addListener(_detectUsername);
     _usernameController.text = widget.user.name;
     super.initState();
   }
 
-  // Need to fix
-  Future<void> _detectUsername() async {
-    setState(() {
-      print(saveChanges);
-      if (saveChanges) {
-        String newUsername = _usernameController.text;
-        print(widget.user.name);
-        widget.user.name = newUsername;
-        print(widget.user.name);
-        databaseService.modifyUser(widget.user);
-        saveChanges = false;
-      }
-      if (_usernameController.text != widget.user.name) {
-
-      }
-    });
+  void changeUsername(String newUsername) {
+    widget.user.name = newUsername;
+    databaseService.modifyUser(widget.user);
+    Navigator.pop(context);
   }
 
   @override
@@ -219,22 +212,16 @@ class _UsernameScreenState extends State<UsernameScreen> {
         foregroundColor: Colors.white,
       ),
 
-      // Replace with functionality that changes username
       body: Column(
         children: [
           TextField(
             controller: _usernameController,
             style: const TextStyle(color: Colors.black),
             cursorColor: Colors.black,
-            autofocus: true,
           ),
           TextButton(
             child: Text('Save'),
-            onPressed: () {
-              setState(() {
-                saveChanges = true;
-              });
-            },
+            onPressed: () => changeUsername(_usernameController.text),
           ),
         ],
       ),
@@ -259,31 +246,17 @@ class _BioScreenState extends State<BioScreen> {
 
   final TextEditingController _bioController = TextEditingController();
   final ClientDB databaseService = ClientDB.instance;
-  bool saveChanges = false;
 
   @override
   void initState() {
-    _bioController.addListener(_detectBio);
     _bioController.text = widget.user.bio;
     super.initState();
   }
 
-  // Need to fix
-  Future<void> _detectBio() async {
-    setState(() {
-      print(saveChanges);
-      if (saveChanges) {
-        String newBio = _bioController.text;
-        print(widget.user.bio);
-        widget.user.bio = newBio;
-        print(widget.user.bio);
-        databaseService.modifyUser(widget.user);
-        saveChanges = false;
-      }
-      if (_bioController.text != widget.user.bio) {
-
-      }
-    });
+  void changeBio(String newBio) {
+    widget.user.bio = newBio;
+    databaseService.modifyUser(widget.user);
+    Navigator.pop(context);
   }
 
   @override
@@ -296,7 +269,6 @@ class _BioScreenState extends State<BioScreen> {
         foregroundColor: Colors.white,
       ),
 
-      // Replace with functionality that changes bio
       body: Column(
         children: [
           TextField(
@@ -307,11 +279,7 @@ class _BioScreenState extends State<BioScreen> {
           ),
           TextButton(
             child: Text('Save'),
-            onPressed: () {
-              setState(() {
-                saveChanges = true;
-              });
-            },
+            onPressed: () => changeBio(_bioController.text),
           ),
         ],
       ),
@@ -336,31 +304,17 @@ class _PronounsScreenState extends State<PronounsScreen> {
 
   final TextEditingController _pronounsController = TextEditingController();
   final ClientDB databaseService = ClientDB.instance;
-  bool saveChanges = false;
 
   @override
   void initState() {
-    _pronounsController.addListener(_detectPronouns);
     _pronounsController.text = widget.user.pronouns;
     super.initState();
   }
 
-  // Need to fix
-  Future<void> _detectPronouns() async {
-    setState(() {
-      print(saveChanges);
-      if (saveChanges) {
-        String newPronouns = _pronounsController.text;
-        print(widget.user.pronouns);
-        widget.user.pronouns = newPronouns;
-        print(widget.user.pronouns);
-        databaseService.modifyUser(widget.user);
-        saveChanges = false;
-      }
-      if (_pronounsController.text != widget.user.pronouns) {
-
-      }
-    });
+  void changePronouns(String newPronouns) {
+    widget.user.pronouns = newPronouns;
+    databaseService.modifyUser(widget.user);
+    Navigator.pop(context);
   }
 
   @override
@@ -373,7 +327,6 @@ class _PronounsScreenState extends State<PronounsScreen> {
         foregroundColor: Colors.white,
       ),
 
-      // Replace with functionality that changes pfp
       body: Column(
         children: [
           TextField(
@@ -384,12 +337,7 @@ class _PronounsScreenState extends State<PronounsScreen> {
           ),
           TextButton(
             child: Text('Save'),
-            onPressed: () {
-              setState(() {
-                saveChanges = true;
-                
-              });
-            },
+            onPressed: () => changePronouns(_pronounsController.text),
           ),
         ],
       ),
