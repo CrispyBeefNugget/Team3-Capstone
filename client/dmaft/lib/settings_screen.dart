@@ -34,6 +34,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return currentUser;
   }
 
+  // Converts the Future of the current user to a Stream. This allows for refreshing the page after a change is made by the user.
+  Stream refreshPage() {
+    return Stream.fromFuture(getUser());
+  }
+
   @override
   void dispose() {
     super.dispose();
@@ -43,8 +48,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
 
     return Scaffold(
-      body: FutureBuilder(
-        future: getUser(),
+      body: StreamBuilder(
+        stream: refreshPage(),
         builder: (BuildContext context, AsyncSnapshot snapshot) {
 
           if (snapshot.hasData) {
@@ -60,7 +65,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: Icon(Icons.account_circle_rounded),
                   onTap: () {
-                    Navigator.of(context).push(
+                    Navigator.of(context)
+                    .push(
                       MaterialPageRoute(builder: (context) => PFPScreen(user: user)), // Redirects to the widget that handles changing a profile picture.
                     );
                   },
@@ -76,7 +82,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       MaterialPageRoute(builder: (context) => UsernameScreen(user: user)), // Redirects to the widget that handles changing the user's username.
                     )
                     .then((_) {
-
+                      setState(() {
+                        refreshPage();
+                      });
                     });
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
@@ -87,9 +95,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: Icon(Icons.description_rounded),
                   onTap: () {
-                    Navigator.of(context).push(
+                    Navigator.of(context)
+                    .push(
                       MaterialPageRoute(builder: (context) => BioScreen(user: user)), // Redirects to the widget that handles changing the user's bio.
-                    );
+                    )
+                    .then((_) {
+                      setState(() {
+                        refreshPage();
+                      });
+                    });
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Bio'),
@@ -99,9 +113,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: Icon(Icons.contact_emergency_rounded),
                   onTap: () {
-                    Navigator.of(context).push(
+                    Navigator.of(context)
+                    .push(
                       MaterialPageRoute(builder: (context) => PronounsScreen(user: user)), // Redirects to the widget that handles changing the user's pronouns.
-                    );
+                    )
+                    .then((_) {
+                      setState(() {
+                        refreshPage();
+                      });
+                    });
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Pronouns'),
@@ -128,8 +148,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: CircularProgressIndicator(),
             );
           }
-        }
-      )
+
+        },
+      ),
 
     );
   }

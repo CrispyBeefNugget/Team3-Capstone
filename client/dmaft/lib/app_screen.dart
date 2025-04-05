@@ -1,7 +1,7 @@
 import 'dart:ffi';
 
 import 'package:flutter/material.dart';
-
+import 'package:dmaft/network.dart';
 import 'package:dmaft/contacts_screen.dart';
 import 'package:dmaft/chats_screen.dart';
 import 'package:dmaft/settings_screen.dart';
@@ -95,26 +95,53 @@ class _AppScreenState extends State<AppScreen> {
 
                 // Opens a new page that allows for the adding of new users to message.
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => Scaffold(
-                    appBar: AppBar(
-                      title: Text('New Conversation'),
-                      centerTitle: true,
-                      backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
-                      foregroundColor: Colors.white,
-                    ),
-                    body: Column(
-                      children: [
-                        TextField(
-                          decoration: const InputDecoration(
-                            hintText: 'Search User',
+                  MaterialPageRoute(builder: (context) {
+                    List results = [];
+                    return Scaffold(
+                      appBar: AppBar(
+                        title: Text('New Conversation'),
+                        centerTitle: true,
+                        backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
+                        foregroundColor: Colors.white,
+                      ),
+                      body: Column(
+                        children: [
+                          TextField(
+                            decoration: const InputDecoration(
+                              hintText: 'Search User',
+                            )
+                            ,
+                            onSubmitted: (String str) async {
+                              final net = Network();
+                              results = await net.searchServerUsers(str, false);
+                              print(results);
+                            },
                           ),
-                        ),
 
-                        // Insert FutureBuilder + ListBuilder here that queries the network for users based on username.
+                          // Does not work. The whole block of code in the MaterialPageRoute may need to be put in either a FutureBuilder or StreamBuilder.
+                          Expanded(
+                            child: SizedBox(
+                              child: ListView.builder(
+                                itemCount: results.length,
+                                itemBuilder: (_, index) => ListTile(
+                                  leading: Icon(Icons.person),
+                                  title: Text(
+                                    results[index]['UserName']
+                                  ),
+                                  onTap:() {
+                                    print('You pressed me!');
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
 
-                      ],
-                    ),
-                  )),
+                          
+                      
+                        ],
+                      ),
+                    );
+                  }),
                 );
 
               },
