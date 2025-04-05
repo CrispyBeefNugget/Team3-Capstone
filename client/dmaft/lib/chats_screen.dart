@@ -120,6 +120,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
     });
   }
 
+  //Stream
+
   @override
   void dispose() {
     _selected.clear();
