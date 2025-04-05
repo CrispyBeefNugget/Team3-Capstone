@@ -17,8 +17,8 @@ print(await databaseservice.generateMsgID("2"));
 var contacts = await databaseservice.getConvoMembers("1");
 contacts.add(await databaseservice.getUser());
 Map<String, String> map = ClientDB.userIDNameMap(contacts);
-print(map);
-*/
+
+
 //Contact user1 = Contact(id: "550516DA-9F37-483F-AB87-A0DAA19203D9", name: "TestUser1", pronouns: "He/Him", bio: "The first test user.", pic: Uint8List(8), lastModified: DateTime.now().toString());
 //Contact user2 = Contact(id: "A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", name: "TestUser2", pronouns: "He/Him", bio: "The second test user.", pic: Uint8List(8), lastModified: DateTime.now().toString());
 //await databaseservice.addContact(user1);
@@ -28,7 +28,7 @@ print(map);
 //await databaseservice.addConvo(convo2);
 
 
-/*
+
 Contact user1 = Contact(id: "0", name: "TestUser1", pronouns: "They/Them", bio: "testuserbio", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
 await databaseservice.modifyUser(user1);
 

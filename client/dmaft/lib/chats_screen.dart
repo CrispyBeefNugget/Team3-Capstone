@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:dmaft/client_db.dart';
 import 'package:dmaft/network.dart';
 
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
 
@@ -472,6 +475,22 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
                                       return Row( // The textfield and sending portion of the conversation.
                                         children: <Widget>[
+                                          //Upload icon.
+                                            SizedBox( 
+                                              width: 50,
+                                              child: IconButton(
+                                                onPressed: () async {
+                                                  final result = await FilePicker.platform.pickFiles();
+                                                  if(result == null) return;
+                                                  final PlatformFile file = result.files.first;
+                                                  setState(() {
+                                                  });
+                                                  },
+                                                icon: Icon(Icons.upload),
+                                              ),
+                                            ),
+                                          
+                                          //Message text field.
                                           Expanded(
                                             child: TextField(
                                               controller: messageContent,
@@ -482,27 +501,26 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                               cursorColor: Colors.black,
                                             ),
                                           ),
-
+                                          
+                                          //Send icon.
                                           SizedBox(
                                             width: 50,
                                             child: IconButton(
                                               onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
-                                                print(messageContent.text);
+                                                print(messageContent.text);                                              
                                                 String newMsgID = snapshot2.data[0];
                                                 String userID = snapshot2.data[1];
-                                                MsgLog log = MsgLog(convoID: conversationList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toUtc().toString(), message: utf8.encode(messageContent.text)); // Change to the generated IDs provided by Ben's methods.
+                                                MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toUtc().toString(), message: utf8.encode(messageContent.text));
                                                 databaseService.addMsgLog(log);
                                                 Network net = Network();
-                                                net.sendTextMessage(conversationList.list[index].convoID, messageContent.text, newMsgID);
-                                                refreshMessages(conversationList.list[index].convoID);
+                                                net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text, newMsgID);
+                                                refreshMessages(_filteredList.list[index].convoID);
                                               },
                                               icon: Icon(Icons.send),
                                             ),
                                           ),
-                                      
                                         ],
                                       );
-
                                     }
 
                                     else {

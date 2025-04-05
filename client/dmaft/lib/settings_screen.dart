@@ -381,20 +381,32 @@ class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Text(
-                  style: TextStyle(fontSize: 20),
-                  "Automatic History Management:"
+                Flexible(
+                  child: Text(
+                    style: TextStyle(fontSize: 20),
+                    "Enable Automatic History Management:",
+                    textAlign: TextAlign.center,
+                  ),
+                  
                 ),
-                Switch(
-                  value: enforceHistory,
-                  activeColor: Colors.blue,
-                  onChanged: (bool value) {
-                    setState(() {
-                      enforceHistory = value;
-                    });
-                  },
+                Flexible(
+                  child: Switch(
+                    value: enforceHistory,
+                    activeColor: Colors.blue,
+                    onChanged: (bool value) {
+                      setState(() {
+                        enforceHistory = value;
+                      });
+                    },
+                  ),
                 ),
               ],
+            ),
+
+            //Small divider between history settings.
+            Divider(
+              color: Colors.black,
+              height: 20,
             ),
 
             //Message history text field
@@ -407,17 +419,19 @@ class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       Flexible(
+                        flex: 2,
                         child: Text(
                           style: TextStyle(fontSize: 20),
-                          "Delete messages after "
+                          "Keep messages for "
                         ),
                       ),
                       Flexible(
                         child: TextFormField(
                           decoration: InputDecoration(
-          
+                            
                             
                           ),
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 20,
                           ),
@@ -441,6 +455,21 @@ class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
                 }
               }
             ), 
+
+            //Information message below day input field.
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.all(30.0),
+                child: Text(
+                  "Messages older than this will automatically be deleted each time Peregrine is opened.",
+                  style: TextStyle(
+                    fontSize: 20,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+
           ], //Column children
         ),
       ),
