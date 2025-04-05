@@ -136,10 +136,12 @@ def handleSearchUsersMsg(clientRequest: dict):
     dbConn = dmaftServerDB.startDB()
     try:
         if clientRequest['SearchBy'].upper() == 'USERNAME':
-            results = dmaftServerDB.getUsersByName(connection=dbConn, userName=clientRequest['SearchTerm'])
+            results = dmaftServerDB.searchUsersByName(connection=dbConn, userName=clientRequest['SearchTerm'])
         else:
-            results = dmaftServerDB.getUserByID(connection=dbConn, userID=clientRequest['SearchTerm'])
-    except:
+            results = dmaftServerDB.searchUserByID(connection=dbConn, userID=clientRequest['SearchTerm'])
+    except Exception as e:
+        print("Exception when trying to search:\n", e, '\n')
+        print(traceback.format_exc())
         return makeError(clientRequest=clientRequest, retry=True, errorCode='ServerInternalError', reason='Failed to execute the requested search. Please try again.')
     finally:
         dbConn.close()

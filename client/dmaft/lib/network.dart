@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:uuid/uuid.dart';
 
 import 'package:dmaft/asym_crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -243,33 +244,53 @@ class Network {
     }
   }
 
-  //Method: searchServerUsers
-  Future<void> searchServerUsers(String nameOrID, bool searchByID) async {
-    if (!_isUiListening()) {
-      throw NetworkStreamListenerRequired();
-    }
-    if (_authInProgress) {
-      print("Authentication is already in progress, waiting...");
-      waitUntilConnected().then((data) {
-        print("Making the user search request!");
-        var requestJson = _constructSearchUserRequest(nameOrID, searchById: searchByID);
-        print(requestJson);
-        print("Sending the user search request now!");
-        _serverSock!.sink.add(requestJson);
-      });
-    }
-    else {
-      print("Authentication not started yet, starting...");
-      connectAndAuth().then((data) {
-        print("Making the user search request!");
-        var requestJson = _constructSearchUserRequest(nameOrID, searchById: searchByID);
-        print(requestJson);
-        print("Sending the user search request now!");
-        _serverSock!.sink.add(requestJson);
-      });
-    }
-  }
 
+  //A "synchronous" operation that directly returns the results it gets.
+  //How it works:
+  //1. Ensure we're already connected and authenticated to the server.
+  //2. Generate an operation ID.
+  //3. Spawn a temporary second connection.
+  //4. Put the temporary connection object into _opsInProgress, using the Operation ID as the key.
+  //5. When the handler catches it and sees the operation ID, it finds the channel and kills it.
+  //  It puts the results in there instead.
+  //6. This method regains execution control and returns the results.
+  Future<List> searchServerUsers(String nameOrID, bool searchByID) async {
+    final WebSocketChannel tempServerSock;
+    if (! wbsAddressRegex.hasMatch(_serverURL)) {
+      throw FormatException('Invalid WebSocket URL given. Should be of format: ws[s]://myFQDN.tld:port or ws[s]://0.0.0.0:port');
+    }
+    if (_publicKey == null || _privateKey == null) {
+      throw AuthenticationKeypairMissing();
+    }
+    final operationID = Uuid().v4();
+    final wsUrl = Uri.parse(_serverURL);
+    return connectAndAuth().then((data) async {
+      final channel = WebSocketChannel.connect(wsUrl);
+      await channel.ready; //Make a second temporary connection to the server
+      var requestJson = _constructSearchUserRequest(nameOrID, searchById: searchByID, operationID: operationID);
+      print(requestJson);
+      _opsInProgress[operationID] = channel;
+      print("Sending the user search request now!");
+      channel.sink.add(requestJson);
+      await for (final msg in channel.stream) {
+        _handleServerResponse(msg);
+      }
+
+      if (_opsInProgress[operationID] == null) {
+        throw Exception('Failed to retrieve the results of user search operation $operationID');
+      }
+      final result = _opsInProgress[operationID];
+      _opsInProgress.remove(operationID);
+
+      for (final record in result) {
+        if (record['ProfilePic'] != null) {
+          record['ProfilePic'] = base64Decode(record['ProfilePic']);
+        }
+      }
+
+      return result;
+    });
+  }
 
 
   //CLIENT STREAM HANDLER METHODS HERE
@@ -427,6 +448,7 @@ class Network {
     print("Network is initialized and ready! :D");
     print(_userID);
     _authInProgress = false;
+    connected = true;
     return true;
   }
 
@@ -479,6 +501,8 @@ class Network {
       case 'USERLEFT':
         return _handleUserLeftMsg(parsedMsg);
 
+      case 'SEARCHUSERS':
+        return _handleSearchResponse(parsedMsg);
     }
   }
 
@@ -560,7 +584,20 @@ Each of these handles a specific kind of message.
       print("Network._handleSearchResponse(): Received invalid response from server!");
       responseMsg['Successful'] = false;
     }
-    clientSock.sink.add(responseMsg);
+    if (responseMsg['OperationId'] != null) {
+      final opID = responseMsg['OperationId'];
+      if (_opsInProgress[opID] != null) {
+        final WebSocketChannel tempChannel = _opsInProgress[opID];
+        tempChannel.sink.close(3000);
+      }
+      else {
+        print("Network WARNING: Received search response with operation ID $opID but no temporary websocket found.");
+      }
+      _opsInProgress[opID] = responseMsg['Results'];
+    }
+    else {
+      clientSock.sink.add(responseMsg);
+    }
   }
 
   void _handleIncomingMsg(Map serverMsg) {
