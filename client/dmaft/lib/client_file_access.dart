@@ -56,8 +56,8 @@ class FileAccess {
       //Insert default settings in JSON format.
       settingsFile.writeAsString("""
         {
-        "deleteHistory": true,
-        "historyDuration": -1
+        "deleteHistory": false,
+        "historyDuration": 100
         }
       """);
     }

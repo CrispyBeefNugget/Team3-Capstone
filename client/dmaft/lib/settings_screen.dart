@@ -18,13 +18,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   final ClientDB databaseService = ClientDB.instance;
 
+  final FileAccess fileService = FileAccess.instance;
+
   late Contact user;
+
+  late Map<String, dynamic> settings;
 
   @override
   void initState() {
     getUser().then((response) {
       setState(() {
         user = response;
+      });
+    });
+    getSettings().then((response) {
+      setState(() {
+        settings = response;
       });
     });
     super.initState();
@@ -34,6 +43,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<Contact> getUser() async {
     var currentUser = await databaseService.getUser();
     return currentUser;
+  }
+
+  //Gets the current settings state from the client's settings file.
+  Future<Map<String, dynamic>> getSettings() async{
+    var currentSettings = await fileService.getSettings();
+    return currentSettings;
   }
 
   // Converts the Future of the current user to a Stream. This allows for refreshing the page after a change is made by the user.
@@ -134,7 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Icon(Icons.manage_history_sharp),
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => MessageHistoryScreen(user: user)), // Redirects to the widget that handles deleting older messages.
+                      MaterialPageRoute(builder: (context) => MessageHistoryScreen(settings: settings)), // Redirects to the widget that handles deleting older messages.
                     );
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
@@ -422,18 +437,40 @@ class _PronounsScreenState extends State<PronounsScreen> {
 class MessageHistoryScreen extends StatefulWidget {
   const MessageHistoryScreen({
     super.key,
-    required this.user,
-  });
+    required this.settings,
+    });
 
-  final Contact user;
+  final Map<String, dynamic> settings;
 
   @override
   State<MessageHistoryScreen> createState() => _MessageHistoryScreenState();
 }
 
 class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
+  final TextEditingController _historyController = TextEditingController();
   final FileAccess fileService = FileAccess.instance;
-  bool enforceHistory = true;
+
+  @override
+  void initState() {
+    _historyController.text = widget.settings["historyDuration"].toString();
+    super.initState();
+  }
+
+ void changeHistoryControl(bool newValue) {
+    widget.settings["deleteHistory"] = newValue;
+    fileService.writeSettings(widget.settings);
+  }
+
+  void changeHistoryDuration(String newValue) {
+    //Validate the input.
+    if(int.tryParse(newValue) != null && int.tryParse(newValue)! >= 1 ){
+      //Update the settings file.
+      widget.settings["historyDuration"] = int.tryParse(newValue);
+      fileService.writeSettings(widget.settings);
+    }
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -464,11 +501,11 @@ class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
                 ),
                 Flexible(
                   child: Switch(
-                    value: enforceHistory,
+                    value: widget.settings["deleteHistory"],
                     activeColor: Colors.blue,
                     onChanged: (bool value) {
                       setState(() {
-                        enforceHistory = value;
+                        changeHistoryControl(value);
                       });
                     },
                   ),
@@ -483,51 +520,39 @@ class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
             ),
 
             //Message history text field
-            FutureBuilder(
-              future: fileService.getSettings(),
-              builder: (BuildContext context, AsyncSnapshot snapshot) {
-                if (snapshot.hasData) {
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Flexible(
-                        flex: 2,
-                        child: Text(
-                          style: TextStyle(fontSize: 20),
-                          "Keep messages for "
-                        ),
-                      ),
-                      Flexible(
-                        child: TextFormField(
-                          decoration: InputDecoration(
-                            
-                            
-                          ),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 20,
-                          ),
-                                              
-                          
-                        ),
-                      ),
-                      Flexible(
-                        child: Text(
-                          style: TextStyle(fontSize: 20),
-                          " days"
-                        ),
-                      ),
-                    ],
-                  );
-                }
-                else {
-                  return Center(
-                    child: CircularProgressIndicator(),
-                  );
-                }
-              }
-            ), 
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Flexible(
+                  flex: 2,
+                  child: Text(
+                    style: TextStyle(fontSize: 20),
+                    "Keep messages for "
+                  ),
+                ),
+                Flexible(
+                  child: TextFormField(
+                    controller: _historyController,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: Text(
+                    style: TextStyle(fontSize: 20),
+                    " days"
+                  ),
+                ),
+              ],
+            ),
+
+            TextButton(
+            child: Text('Save Duration'),
+            onPressed: () => changeHistoryDuration(_historyController.text),
+            ),
 
             //Information message below day input field.
             Flexible(
