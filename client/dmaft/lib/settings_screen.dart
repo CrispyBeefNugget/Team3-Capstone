@@ -1,9 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 
 import 'package:dmaft/client_db.dart';
 import 'package:dmaft/client_file_access.dart';
+
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -169,6 +171,14 @@ class PFPScreen extends StatefulWidget {
 }
 
 class _PFPScreenState extends State<PFPScreen> {
+  final ClientDB databaseService = ClientDB.instance;
+  
+  void changeProfilePic(Uint8List newPic) {
+      widget.user.pic = newPic;
+      databaseService.modifyUser(widget.user);
+      Navigator.pop(context);
+    }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -185,7 +195,49 @@ class _PFPScreenState extends State<PFPScreen> {
           Center(
             child: CircleAvatar(
               backgroundImage: Image.memory(widget.user.pic).image,
+              radius: 200,
             ),
+          ),
+
+          //Small divider.
+          Divider(
+            color: Colors.black,
+            height: 20,
+          ),
+
+          //Profile picture updating row.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              //Update profile picture text.
+              Flexible(
+                child: Text(
+                  "Update profile picture: ",
+                  style: TextStyle(
+                    fontSize: 20,
+                  )
+                ),
+              ),
+
+              //Upload icon.
+              Flexible(
+                child: SizedBox( 
+                  width: 100,
+                  child: IconButton(
+                    onPressed: () async {      
+                      //Fetch a specified file from the user.
+                      final result = await FilePicker.platform.pickFiles(withData: true, type: FileType.custom, allowedExtensions: ['jpg', 'jpeg', 'png']);
+                      if(result == null) return;
+                      final PlatformFile file = result.files.first;
+                      //Update the user's data.
+                      changeProfilePic(file.bytes!);
+
+                    },
+                    icon: Icon(Icons.upload),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
