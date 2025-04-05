@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 
 import 'package:dmaft/client_db.dart';
 import 'package:dmaft/client_file_access.dart';
@@ -71,12 +73,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: Icon(Icons.alternate_email_outlined),
                   onTap: () {
-                    Navigator.of(context).push(
+                    Navigator.of(context)
+                    .push(
                       MaterialPageRoute(builder: (context) => UsernameScreen(user: user)), // Redirects to the widget that handles changing the user's username.
-                    );
+                    )
+                    .then((_) {
+
+                    });
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Username'),
+                  subtitle: Text(user.name),
                 ),
 
                 ListTile(
@@ -88,6 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Bio'),
+                  subtitle: Text(user.bio),
                 ),
 
                 ListTile(
@@ -99,6 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   trailing: Icon(Icons.arrow_forward_ios),
                   title: Text('Pronouns'),
+                  subtitle: Text(user.pronouns),
                 ),
 
                 ListTile(
@@ -182,31 +191,17 @@ class _UsernameScreenState extends State<UsernameScreen> {
 
   final TextEditingController _usernameController = TextEditingController();
   final ClientDB databaseService = ClientDB.instance;
-  bool saveChanges = false;
 
   @override
   void initState() {
-    _usernameController.addListener(_detectUsername);
     _usernameController.text = widget.user.name;
     super.initState();
   }
 
-  // Need to fix
-  Future<void> _detectUsername() async {
-    setState(() {
-      print(saveChanges);
-      if (saveChanges) {
-        String newUsername = _usernameController.text;
-        print(widget.user.name);
-        widget.user.name = newUsername;
-        print(widget.user.name);
-        databaseService.modifyUser(widget.user);
-        saveChanges = false;
-      }
-      if (_usernameController.text != widget.user.name) {
-
-      }
-    });
+  void changeUsername(String newUsername) {
+    widget.user.name = newUsername;
+    databaseService.modifyUser(widget.user);
+    Navigator.pop(context);
   }
 
   @override
@@ -219,22 +214,16 @@ class _UsernameScreenState extends State<UsernameScreen> {
         foregroundColor: Colors.white,
       ),
 
-      // Replace with functionality that changes username
       body: Column(
         children: [
           TextField(
             controller: _usernameController,
             style: const TextStyle(color: Colors.black),
             cursorColor: Colors.black,
-            autofocus: true,
           ),
           TextButton(
             child: Text('Save'),
-            onPressed: () {
-              setState(() {
-                saveChanges = true;
-              });
-            },
+            onPressed: () => changeUsername(_usernameController.text),
           ),
         ],
       ),
@@ -259,31 +248,17 @@ class _BioScreenState extends State<BioScreen> {
 
   final TextEditingController _bioController = TextEditingController();
   final ClientDB databaseService = ClientDB.instance;
-  bool saveChanges = false;
 
   @override
   void initState() {
-    _bioController.addListener(_detectBio);
     _bioController.text = widget.user.bio;
     super.initState();
   }
 
-  // Need to fix
-  Future<void> _detectBio() async {
-    setState(() {
-      print(saveChanges);
-      if (saveChanges) {
-        String newBio = _bioController.text;
-        print(widget.user.bio);
-        widget.user.bio = newBio;
-        print(widget.user.bio);
-        databaseService.modifyUser(widget.user);
-        saveChanges = false;
-      }
-      if (_bioController.text != widget.user.bio) {
-
-      }
-    });
+  void changeBio(String newBio) {
+    widget.user.bio = newBio;
+    databaseService.modifyUser(widget.user);
+    Navigator.pop(context);
   }
 
   @override
@@ -296,7 +271,6 @@ class _BioScreenState extends State<BioScreen> {
         foregroundColor: Colors.white,
       ),
 
-      // Replace with functionality that changes bio
       body: Column(
         children: [
           TextField(
@@ -307,11 +281,7 @@ class _BioScreenState extends State<BioScreen> {
           ),
           TextButton(
             child: Text('Save'),
-            onPressed: () {
-              setState(() {
-                saveChanges = true;
-              });
-            },
+            onPressed: () => changeBio(_bioController.text),
           ),
         ],
       ),
@@ -336,31 +306,17 @@ class _PronounsScreenState extends State<PronounsScreen> {
 
   final TextEditingController _pronounsController = TextEditingController();
   final ClientDB databaseService = ClientDB.instance;
-  bool saveChanges = false;
 
   @override
   void initState() {
-    _pronounsController.addListener(_detectPronouns);
     _pronounsController.text = widget.user.pronouns;
     super.initState();
   }
 
-  // Need to fix
-  Future<void> _detectPronouns() async {
-    setState(() {
-      print(saveChanges);
-      if (saveChanges) {
-        String newPronouns = _pronounsController.text;
-        print(widget.user.pronouns);
-        widget.user.pronouns = newPronouns;
-        print(widget.user.pronouns);
-        databaseService.modifyUser(widget.user);
-        saveChanges = false;
-      }
-      if (_pronounsController.text != widget.user.pronouns) {
-
-      }
-    });
+  void changePronouns(String newPronouns) {
+    widget.user.pronouns = newPronouns;
+    databaseService.modifyUser(widget.user);
+    Navigator.pop(context);
   }
 
   @override
@@ -373,7 +329,6 @@ class _PronounsScreenState extends State<PronounsScreen> {
         foregroundColor: Colors.white,
       ),
 
-      // Replace with functionality that changes pfp
       body: Column(
         children: [
           TextField(
@@ -384,12 +339,7 @@ class _PronounsScreenState extends State<PronounsScreen> {
           ),
           TextButton(
             child: Text('Save'),
-            onPressed: () {
-              setState(() {
-                saveChanges = true;
-                
-              });
-            },
+            onPressed: () => changePronouns(_pronounsController.text),
           ),
         ],
       ),
@@ -412,63 +362,84 @@ class MessageHistoryScreen extends StatefulWidget {
 
 class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
   final FileAccess fileService = FileAccess.instance;
-  
+  bool enforceHistory = true;
   @override
   Widget build(BuildContext context) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Message History'),
-          centerTitle: true,
-          backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
-          foregroundColor: Colors.white,
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Message History'),
+        centerTitle: true,
+        backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
+        foregroundColor: Colors.white,
+      ),
 
-        body: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              //Message history info text box
-              Container(
-                width: 500,
-                decoration: BoxDecoration(
-                  border: Border.all(),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            //Automatic message history control switch.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Text(
+                  style: TextStyle(fontSize: 20),
+                  "Automatic History Management:"
                 ),
-                child: Text(
-                  "If message history control is disabled, messages will be stored indefinitely until manually deleted.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20,
-                  ),
+                Switch(
+                  value: enforceHistory,
+                  activeColor: Colors.blue,
+                  onChanged: (bool value) {
+                    setState(() {
+                      enforceHistory = value;
+                    });
+                  },
                 ),
-              ),
-              //Message history text field
-              FutureBuilder(
-                future: fileService.getSettings(),
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  if (snapshot.hasData) {
-                    return TextFormField(
-                      decoration: InputDecoration(
-                        icon: Icon(Icons.calendar_month),
+              ],
+            ),
+
+            //Message history text field
+            FutureBuilder(
+              future: fileService.getSettings(),
+              builder: (BuildContext context, AsyncSnapshot snapshot) {
+                if (snapshot.hasData) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: TextFormField(
+                          decoration: InputDecoration(
+                            icon: Icon(Icons.calendar_month),
+                            
+                          ),
+                          style: TextStyle(
+                            fontSize: 20,
+                          ),
+                                              
+                          
+                        ),
                       ),
-                      initialValue: snapshot.data["messageHistory"], 
-                      style: TextStyle(
-                        fontSize: 20,
+                      Flexible(
+                        child: Text(
+                          style: TextStyle(fontSize: 20),
+                          " days"
+                        ),
                       ),
-                      
-                    );
-                  }
-                  else {
-                    return Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
+                    ],
+                  );
                 }
-              ), 
-            ], //Column children
-          ),
+                else {
+                  return Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+              }
+            ), 
+          ], //Column children
         ),
-      );
+      ),
+    );
   }
 }
