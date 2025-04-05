@@ -381,63 +381,90 @@ class MessageHistoryScreen extends StatefulWidget {
 
 class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
   final FileAccess fileService = FileAccess.instance;
-  
+  bool enforceHistory = true;
   @override
   Widget build(BuildContext context) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Message History'),
-          centerTitle: true,
-          backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
-          foregroundColor: Colors.white,
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Message History'),
+        centerTitle: true,
+        backgroundColor: const Color.fromRGBO(4, 150, 255, 1),
+        foregroundColor: Colors.white,
+      ),
 
-        body: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              //Message history info text box
-              Container(
-                width: 500,
-                decoration: BoxDecoration(
-                  border: Border.all(),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            //Automatic message history control switch.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Text(
+                  style: TextStyle(fontSize: 20),
+                  "Automatic History Management:"
                 ),
-                child: Text(
-                  "If message history control is disabled, messages will be stored indefinitely until manually deleted.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20,
-                  ),
+                Switch(
+                  value: enforceHistory,
+                  activeColor: Colors.blue,
+                  onChanged: (bool value) {
+                    setState(() {
+                      enforceHistory = value;
+                    });
+                  },
                 ),
-              ),
-              //Message history text field
-              FutureBuilder(
-                future: fileService.getSettings(),
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  if (snapshot.hasData) {
-                    return TextFormField(
-                      decoration: InputDecoration(
-                        icon: Icon(Icons.calendar_month),
+              ],
+            ),
+
+            //Message history text field
+            FutureBuilder(
+              future: fileService.getSettings(),
+              builder: (BuildContext context, AsyncSnapshot snapshot) {
+                if (snapshot.hasData) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          style: TextStyle(fontSize: 20),
+                          "Delete messages after "
+                        ),
                       ),
-                      initialValue: snapshot.data["messageHistory"], 
-                      style: TextStyle(
-                        fontSize: 20,
+                      Flexible(
+                        child: TextFormField(
+                          decoration: InputDecoration(
+          
+                            
+                          ),
+                          style: TextStyle(
+                            fontSize: 20,
+                          ),
+                                              
+                          
+                        ),
                       ),
-                      
-                    );
-                  }
-                  else {
-                    return Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
+                      Flexible(
+                        child: Text(
+                          style: TextStyle(fontSize: 20),
+                          " days"
+                        ),
+                      ),
+                    ],
+                  );
                 }
-              ), 
-            ], //Column children
-          ),
+                else {
+                  return Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+              }
+            ), 
+          ], //Column children
         ),
-      );
+      ),
+    );
   }
 }

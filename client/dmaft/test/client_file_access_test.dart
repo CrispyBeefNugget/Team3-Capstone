@@ -5,10 +5,11 @@ import 'dart:convert';
 void main () async{
   WidgetsFlutterBinding.ensureInitialized();
   
-  /*
-  final settingsHelper = FileAccess.instance;
 
-  
+  final filehelper = FileAccess.instance;
+Map<String, dynamic> settings = await filehelper.getSettings();
+  print(settings);
+  /*  
   Map<String, dynamic> settings = await settingsHelper.getSettings();
   print(settings);
   settings["test2"] = "pumpkins";
@@ -20,19 +21,19 @@ void main () async{
 
   //final pic = await settingsHelper.getDefaultPic();
   */
-  final filehelper = FileAccess.instance;
+
   /*
 
   print("UUID:");
   //await filehelper.setUUID("testUUID1");
   //await filehelper.delUUID();
   print(await filehelper.getUUID());
-  */
+  
   print("RSAKeys:");
   await filehelper.setRSAKeys("testkeyp", "testkeyq", "testkeyn", "testkeyd", "testkeye");
   //await filehelper.delRSAKeys();
   print(await filehelper.getRSAKeys());
-/*
+
   print("TokenID:");
   //await filehelper.setTokenID("testTokenID1");
   //await filehelper.delTokenID();

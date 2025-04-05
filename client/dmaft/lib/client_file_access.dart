@@ -4,6 +4,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 
 
 
@@ -54,7 +56,8 @@ class FileAccess {
       //Insert default settings in JSON format.
       settingsFile.writeAsString("""
         {
-        "historyDuration": -1,
+        "deleteHistory": true,
+        "historyDuration": -1
         }
       """);
     }

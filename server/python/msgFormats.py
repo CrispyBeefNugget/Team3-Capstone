@@ -198,8 +198,9 @@ searchUsersResponseMsgFormat = {
     'SearchBy':['UserId','UserName'],
     'SearchTerm':'', #
     'ServerTimestamp': time.time(),
-    'Results':[{'UserId':'','UserName':''}, {'UserId':'','UserName':''}]
+    'Results':[{'UserId':'','UserName':'','Status':'','Bio:':'','ProfilePic':''}, {'UserId':'','UserName':'','Status':'','Bio:':'','ProfilePic':''}]
 }
+#Status, Bio, ProfilePic only appear if searching by ID.
 
 uploadProfileResponseMsgFormat = {
     'Command':'UPDATEPROFILE',

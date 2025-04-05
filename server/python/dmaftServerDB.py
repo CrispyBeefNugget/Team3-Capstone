@@ -290,9 +290,10 @@ def registerUser(*, connection: sqlite3.Connection, publicKey: rsa.RSAPublicKey)
 def searchUserByID(*, connection: sqlite3.Connection, userID: str):
     try:
         with connection:
-            stmt = 'SELECT UserID, UserName FROM tblRegisteredUsers WHERE UserID = ?;'
+            stmt = 'SELECT UserID, UserName, Status, Bio, ProfilePic FROM tblRegisteredUsers WHERE UserID = ?;'
             cursor = connection.execute(stmt, [userID])
             results = cursor.fetchall()
+            print('User search result for',userID,':',results)
             return results
     except Exception as e:
         print("Unable to query the registered users table: ", e)
@@ -301,11 +302,13 @@ def searchUserByID(*, connection: sqlite3.Connection, userID: str):
 #Searches the database by UserName.
 #Returns a list of results if successful and None if failed.
 def searchUsersByName(*, connection: sqlite3.Connection, userName: str):
+    userName = '%' + userName + '%'
     try:
         with connection:
-            stmt = 'SELECT UserID, UserName FROM tblRegisteredUsers WHERE UserName LIKE ?;'
+            stmt = "SELECT UserID, UserName FROM tblRegisteredUsers WHERE UserName LIKE ?;"
             cursor = connection.execute(stmt, [userName])
             results = cursor.fetchall()
+            print('Name search result for',userName,':',results)
             return results
     except Exception as e:
         print("Unable to query the registered users table: ", e)
