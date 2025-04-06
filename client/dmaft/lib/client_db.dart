@@ -781,7 +781,8 @@ class ClientDB{
   //Description: Remove all message logs in the database older than the given number of days from the current date.
   Future<void> delOlderMsgLogs(int numDays) async{
     //Calculate the cutoff date for messages.
-    DateTime cutOffDate = DateTime.now().subtract(Duration(days: numDays));
+    DateTime cutOffDate = DateTime.now().toUtc().subtract(Duration(days: numDays));
+    print("Deleting all messages older than ${cutOffDate.toString()}");
     //Fetch all conversations.
     final db = await database;
     List<Conversation> convos = await getAllConvos(); 

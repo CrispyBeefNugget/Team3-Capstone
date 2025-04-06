@@ -550,8 +550,8 @@ class _MessageHistoryScreenState extends State<MessageHistoryScreen> {
             ),
 
             TextButton(
-            child: Text('Save Duration'),
-            onPressed: () => changeHistoryDuration(_historyController.text),
+              child: Text('Save Duration'),
+              onPressed: () => changeHistoryDuration(_historyController.text),
             ),
 
             //Information message below day input field.
