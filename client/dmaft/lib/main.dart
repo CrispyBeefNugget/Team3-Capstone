@@ -117,7 +117,7 @@ class DMAFT extends StatelessWidget {
 
     //Enforce current automatic message history management settings.
     enforceMessageHistory();
-    
+
     startNetwork();
     //setIdAndKeyPair1(); // Run this on the first client.
     //setIdAndKeyPair2(); // Run this on the second client.
