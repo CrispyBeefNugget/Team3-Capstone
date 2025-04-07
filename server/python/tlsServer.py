@@ -176,7 +176,7 @@ def handleNewConvoRequest(clientRequest: dict):
 
     #Parse the recipient list and ensure that each recipient is a valid UserID.
     #Remove all duplicates too.
-    recipients = clientRequest['Recipients']
+    recipients = clientRequest['RecipientIds']
     print("Trying to create a new conversation with recipients:", recipients)
     if type(recipients) != list:
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='The Recipient key must specify a list of UserID strings to add to the conversation.')
