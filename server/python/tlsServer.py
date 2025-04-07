@@ -182,7 +182,7 @@ def handleNewConvoRequest(clientRequest: dict):
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='The Recipient key must specify a list of UserID strings to add to the conversation.')
 
     recipients = list(dict.fromkeys(recipients))
-    for i in len(recipients):
+    for i in range(len(recipients)):
         recipients[i] = str(recipients[i]).upper()
     
     sender = clientRequest['UserId'].upper()
