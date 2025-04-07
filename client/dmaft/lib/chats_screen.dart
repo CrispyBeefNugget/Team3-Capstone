@@ -7,7 +7,6 @@ import 'package:dmaft/client_db.dart';
 import 'package:dmaft/network.dart';
 
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
@@ -26,7 +25,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   ({List<Conversation> list, List<String> names}) conversationList = (list: [], names: []);
   ({List<Conversation> list, List<String> names}) _filteredList = (list: [], names: []);
-  late List<bool> _selected;
+  List<bool> _selected = [];
   static Map<String, List<MsgLog>> messages = {}; //Stores the message logs for each conversation. Accessed using the convoID.
 
   Map<String, Map<String, String>> userIDsToNames = {}; //Holds the userIDs and userNames for participants in each conversation.
@@ -35,7 +34,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
   bool isSelectionMode = false;
   bool _selectAll = false;
 
-  late String userID;
+  String userID = "";
 
   StreamController<Map<String, List<MsgLog>>> messageController = StreamController<Map<String, List<MsgLog>>>.broadcast();
   final ScrollController _scrollController = ScrollController();
@@ -73,6 +72,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
       for(int i = 0; i < conversations.length; i++){
         messages[conversations[i].convoID] = await getChatMessages(conversations[i].convoID);
       } 
+      if(_scrollController.hasClients){
+        //_scrollDown(); This implementation will continually scroll down, not allowing the user to scroll through message history.
+      }
     });
     //Update the message stream.
     messageController.add(messages);
@@ -243,6 +245,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
       body: StreamBuilder(
         stream: refreshPage(),
         //future: getConversationInfo(),
+        initialData: conversationList,
         builder: (BuildContext context, AsyncSnapshot snapshot) {
           if (snapshot.hasData) {
 
@@ -339,16 +342,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
                               StreamBuilder( // The messages portion of the conversation.
                                 stream: messageController.stream,
-                                //future: Future.wait([getChatMessages(_filteredList.list[index].convoID), getUserID()]),
                                 initialData: messages,
                                 builder: (BuildContext context2, AsyncSnapshot snapshot2) {
 
-                                  /*
-                                  if (snapshot2.connectionState != ConnectionState.done) { // Left off here on trying to get the FutureBuilder to refresh.
-                                    return Center(
-                                      child: CircularProgressIndicator(),
-                                    );
-                                  } */
                                  //else
                                   if (snapshot2.hasData) { // Messages are loaded in with the ListView.builder.
                                     return Column(
@@ -387,8 +383,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                             SizedBox(
                                               width: 50,
                                               child: IconButton(
-                                                onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
-                                                  print(messageContent.text);                                              
+                                                onPressed: () { // Message is sent.                                       
                                                   String newMsgID = snapshot2.data[0];
                                                   String userID = snapshot2.data[1];
                                                   MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toUtc().toString(), message: utf8.encode(messageContent.text));
@@ -396,7 +391,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                                   Network net = Network();
                                                   net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text, newMsgID);
                                                   fetchAllMessages();
-                                                  _scrollDown();
+                                                  
                                                   messageContent.clear();
                                                 },
                                                 icon: Icon(Icons.send),
@@ -443,7 +438,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       else {
                         TextEditingController messageContent = TextEditingController();
                         setChatMessageVariable(_filteredList.list[index].convoID);
-                        //refreshMessages(_filteredList.list[index].convoID);
                          messageController.add(messages);
                         // Clicking on a conversation opens a page containing the messages part of that conversation.
                         Navigator.of(context).push(
@@ -471,11 +465,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 Padding(
                                   padding: EdgeInsets.all(10.0)
                                 ),
-                                /*
-                                FutureBuilder( // The messages portion of the conversation.
-                                  future: Future.wait([getChatMessages(conversationList.list[index].convoID), getUserID()]),
-                                  builder: (BuildContext context2, AsyncSnapshot snapshot2) {
-                                */
+
                                 StreamBuilder( // The messages portion of the conversation.
                                   stream: messageController.stream,
                                   initialData: messages,
@@ -518,6 +508,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                       return Row( // The textfield and sending portion of the conversation.
                                         children: <Widget>[
                                           //Upload icon.
+                                            /* Not enough time to implement this.
                                             SizedBox( 
                                               width: 50,
                                               child: IconButton(
@@ -531,7 +522,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                                 icon: Icon(Icons.upload),
                                               ),
                                             ),
-                                          
+                                          */ 
                                           //Message text field.
                                           Expanded(
                                             child: TextField(

@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -19,13 +20,27 @@ class _ContactsScreenState extends State<ContactsScreen> {
   // Allows us to access the client database, the contents of which are stored locally on device.
   final ClientDB databaseService = ClientDB.instance;
 
-  List<Contact> contactList = [];
+  //Used for building the contact list. When added to, updates the display.
+  StreamController<List<Contact>> contactController = StreamController<List<Contact>>.broadcast();
+
+  static List<Contact> contactList = [];
   List<Contact> _filteredList = [];
-  late List<bool> _selected; // List is generated later once the contacts are loaded in.
+  List<bool> _selected = []; // List is generated later once the contacts are loaded in.
   
   bool isSearchingMode = false;
   bool isSelectionMode = false;
   bool _selectAll = false;
+
+  //Fetches all messages in the database and passes the info on to the message stream.
+  Future<void> fetchAllContacts() async {
+    //Fill the messages static variable with all conversations' existing messageLogs.
+    databaseService.getContacts().then((response) async{
+      List<Contact> contacts = response;
+      contactList = contacts;
+    });
+    //Update the message stream.
+    contactController.add(contactList);
+  }
 
   @override
   void initState() {
@@ -136,8 +151,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
         ],
       ),
 
-      body: FutureBuilder(
-        future: getContactInfo(),
+      body: StreamBuilder(
+        stream: contactController.stream,
+        initialData: contactList,
         builder: (BuildContext context, AsyncSnapshot snapshot) {
           if (snapshot.hasData) {
 
@@ -160,17 +176,20 @@ class _ContactsScreenState extends State<ContactsScreen> {
                   if (isSelectionMode)
                     IconButton(
                       onPressed: () {
-                        
-                        for (int i = 0; i < contactList.length; i++) {
+                        List<Contact> tempContactList = contactList;
+                        for (int i = 0; i < tempContactList.length; i++) {
                           if (_selected[i] == true) {
-                            databaseService.delContact(contactList[i]);
+                            databaseService.delContact(tempContactList[i]);
+                            contactList.remove(tempContactList[i]);
                           }
                         }
-                        refreshContacts();
                         setState(() {
                           isSelectionMode = false;
                           initializeSelection();
                         });
+                        refreshContacts();
+                        fetchAllContacts();
+                        contactController.add(contactList);
 
                       },
                       icon: Icon(Icons.delete)
@@ -215,8 +234,18 @@ class _ContactsScreenState extends State<ContactsScreen> {
                             actions: [
                               IconButton(
                                 onPressed: () {
-                                  databaseService.delContact(_filteredList[index]);
+                                  _selected = List<bool>.generate(contactList.length, (_) => _selectAll);
+                                  databaseService.delContact(_filteredList[index])
+                                    .then((_) {
+                                      contactList.remove(_filteredList[index]);
+                                      contactController.add(contactList);
+                                      setState(() {
+                                        _selected = List<bool>.generate(contactList.length, (_) => _selectAll);
+                                      });
+                                    });
+                                    
                                   refreshContacts();
+                                  fetchAllContacts();
                                   Navigator.pop(context);
                                   _searchController.text = '';
                                 },
@@ -241,12 +270,12 @@ class _ContactsScreenState extends State<ContactsScreen> {
                               ),
 
                               ListTile(
-                                title: Text(_filteredList[index].name),
-                                titleAlignment: ListTileTitleAlignment.center, // Not working. Might substitute listtiles for center or another widget.
+                                title: Text(_filteredList[index].id),
+                                titleAlignment: ListTileTitleAlignment.center, 
                               ),
                               ListTile(
-                                title: Text(_filteredList[index].id),
-                                titleAlignment: ListTileTitleAlignment.center,
+                                title: Text(_filteredList[index].name),
+                                titleAlignment: ListTileTitleAlignment.center, // Not working. Might substitute listtiles for center or another widget.
                               ),
                               ListTile(
                                 title: Text(_filteredList[index].pronouns),
@@ -254,10 +283,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
                               ),
                               ListTile(
                                 title: Text(_filteredList[index].bio),
-                                titleAlignment: ListTileTitleAlignment.center,
-                              ),
-                              ListTile(
-                                title: Text(_filteredList[index].lastModified),
                                 titleAlignment: ListTileTitleAlignment.center,
                               ),
 
@@ -291,8 +316,17 @@ class _ContactsScreenState extends State<ContactsScreen> {
                               actions: [
                                 IconButton(
                                   onPressed: () {
-                                    databaseService.delContact(contactList[index]);
+                                    databaseService.delContact(contactList[index])                    
+                                    .then((_) {
+                                      contactList.remove(contactList[index]);
+                                      contactController.add(contactList);
+                                      setState(() {
+                                        _selected = List<bool>.generate(contactList.length, (_) => _selectAll);
+                                      });
+                                    });
+                                    
                                     refreshContacts();
+                                    fetchAllContacts();
                                     Navigator.pop(context);
                                   },
                                   icon: Icon(Icons.delete),
@@ -315,6 +349,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                 ),
 
                                 ListTile(
+                                  title: Text(contactList[index].id),
+                                  titleAlignment: ListTileTitleAlignment.center,
+                                ),
+                                ListTile(
                                   title: Text(contactList[index].name),
                                   titleAlignment: ListTileTitleAlignment.center, // Not working. Might substitute listtiles for center or another widget.
                                 ),
@@ -324,10 +362,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                 ),
                                 ListTile(
                                   title: Text(contactList[index].bio),
-                                  titleAlignment: ListTileTitleAlignment.center,
-                                ),
-                                ListTile(
-                                  title: Text(contactList[index].lastModified),
                                   titleAlignment: ListTileTitleAlignment.center,
                                 ),
 

@@ -71,6 +71,15 @@ class _AppScreenState extends State<AppScreen> {
   //   return dbConversations.length;
   // }
 
+  Future<void> startConvo(String userID) async {
+    final net = Network();
+    net.createNewConversation([userID]);
+    Navigator.pop(context);
+
+    
+
+  }
+
   @override
   void dispose() {
     super.dispose();
@@ -80,6 +89,8 @@ class _AppScreenState extends State<AppScreen> {
   Widget build(BuildContext context) {
 
     final ThemeData theme = Theme.of(context);
+    final TextEditingController userIDController = TextEditingController();
+
 
     return Scaffold(
       appBar: AppBar(
@@ -107,15 +118,14 @@ class _AppScreenState extends State<AppScreen> {
                       body: Column(
                         children: [
                           TextField(
+                            controller: userIDController,
                             decoration: const InputDecoration(
-                              hintText: 'Search User',
-                            )
-                            ,
-                            onSubmitted: (String str) async {
-                              final net = Network();
-                              results = await net.searchServerUsers(str, false);
-                              print(results);
-                            },
+                              hintText: 'Enter UserID',
+                            ),
+                          ),
+                          TextButton(
+                            child: Text('Submit'),
+                            onPressed: () => startConvo(userIDController.text),
                           ),
 
                           // Does not work. The whole block of code in the MaterialPageRoute may need to be put in either a FutureBuilder or StreamBuilder.
@@ -129,7 +139,6 @@ class _AppScreenState extends State<AppScreen> {
                                     results[index]['UserName']
                                   ),
                                   onTap:() {
-                                    print('You pressed me!');
                                   },
                                 ),
                               ),

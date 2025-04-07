@@ -72,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (snapshot.hasData) {
             return ListView(
               children: [
-                
+
                 ListTile(
                   leading: Icon(Icons.perm_identity_rounded),
                   title: Text('UserID'),
@@ -204,9 +204,9 @@ class _PFPScreenState extends State<PFPScreen> {
         foregroundColor: Colors.white,
       ),
 
-      // Replace with functionality that changes pfp
       body: Column(
         children: [
+          //Display current profile pic.
           Center(
             child: CircleAvatar(
               backgroundImage: Image.memory(widget.user.pic).image,

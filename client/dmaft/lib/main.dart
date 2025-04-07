@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:dmaft/client_file_access.dart';
 import 'package:flutter/material.dart';
 
@@ -40,7 +41,8 @@ void setIdAndKeyPair1() async {
   final e = privateKey.publicExponent.toString();
 
   // Attempt to new
-  await fileHelper.setUUID(id2);
+  //await fileHelper.setUUID(id2);
+  await fileHelper.setUUID("550516DA-9F37-483F-AB87-A0DAA19203D9");
   await fileHelper.setRSAKeys(p, q, n, d, e);
 }
 
@@ -60,7 +62,8 @@ void setIdAndKeyPair2() async {
   final e = privateKey.publicExponent.toString();
 
   // Attempt to new
-  await fileHelper.setUUID(id2);
+  //await fileHelper.setUUID(id2);
+  await fileHelper.setUUID("58EA80BE-B7E2-4E9F-A37D-E175C27904EB");
   await fileHelper.setRSAKeys(p, q, n, d, e);
 }
 
@@ -181,7 +184,9 @@ class Handler {
           }
         }
         final FileAccess fileHelper = FileAccess.instance;
+        final ClientDB clientDBHelper = ClientDB.instance;
         await fileHelper.setUUID(data['UserId']);
+        await clientDBHelper.modifyUser(Contact(id: data['UserId'], name: "", pronouns: "", bio: "", pic: Uint8List(8), lastModified: DateTime.now().toUtc().toString())); //Adds the newly-assigned UUID to the userID database field.
         await fileHelper.setRSAKeys(data['p'], data['q'], data['n'], data['d'], data['e']);
         print("UI saved credentials for new user " + data['UserId'] + "!");
       default:

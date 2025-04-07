@@ -216,19 +216,22 @@ class ClientDB{
   }
 
   Future<void> fillDatabase() async{
-    Contact user1 = Contact(id: "0", name: "TestUser1", pronouns: "They/Them", bio: "testuserbio", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact user1 = Contact(id: "550516DA-9F37-483F-AB87-A0DAA19203D9", name: "TestUser1", pronouns: "He/Him", bio: "I'm the first test user for Peregrine!", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    //Contact user1 = Contact(id: "A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", name: "TestUser2", pronouns: "He/Him", bio: "I'm the second test user for Peregrine!", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
     await modifyUser(user1);
 
-    Contact cont1 = Contact(id: "1", name: "Frank Richardson", pronouns: "He/Him", bio: "testbio1", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
-    Contact cont2 = Contact(id: "2", name: "David Alfonzo", pronouns: "He/Him", bio: "testbio2", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970"); 
-    Contact cont3 = Contact(id: "3", name: "Craig Collins", pronouns: "He/Him", bio: "testbio3", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
-    Contact cont4 = Contact(id: "4", name: "Michelle Holly", pronouns: "They/Them", bio: "testbio4", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
-    Contact cont5 = Contact(id: "5", name: "Dustin Smith", pronouns: "He/Him", bio: "testbio5", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
-    Contact cont6 = Contact(id: "6", name: "Janelle Collins", pronouns: "She/Her", bio: "testbio6", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
-    Contact cont7 = Contact(id: "7", name: "Richard Hoffman", pronouns: "They/Them", bio: "testbio7", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
-    Contact cont8 = Contact(id: "8", name: "Amanda Dillon", pronouns: "She/Her", bio: "testbio8", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
-    Contact cont9 = Contact(id: "9", name: "Carly Sylvester", pronouns: "She/Her", bio: "testbio9", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
-    Contact cont10 = Contact(id: "10", name: "William Masters", pronouns: "He/Him", bio: "testbio10", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact cont1 = Contact(id: "72537670-1371-11F0-Bf31-B13C5532B1CE", name: "Frank Richardson", pronouns: "He/Him", bio: "testbio1", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact cont2 = Contact(id: "A09BD016-9985-4355-B75D-E26F1975130F", name: "David Alfonzo", pronouns: "He/Him", bio: "testbio2", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970"); 
+    Contact cont3 = Contact(id: "67C6D4B3-7BD8-45F5-A8C8-12504C5FB65B", name: "Craig Collins", pronouns: "He/Him", bio: "testbio3", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact cont4 = Contact(id: "2DD759F9-D6BA-4D3A-A421-1494E006DB96", name: "Michelle Holly", pronouns: "They/Them", bio: "testbio4", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact cont5 = Contact(id: "5813F613-5A73-4226-B089-662833020006", name: "Dustin Smith", pronouns: "He/Him", bio: "testbio5", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact cont6 = Contact(id: "8E83BE55-C3D2-4827-B4DC-86D34BB22376", name: "Janelle Collins", pronouns: "She/Her", bio: "testbio6", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact cont7 = Contact(id: "F2D0CF5D-DF23-408A-97A3-DBD672E75D74", name: "Richard Hoffman", pronouns: "They/Them", bio: "testbio7", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact cont8 = Contact(id: "54E13B9A-D59C-48AD-A1AA-EA3DE082F027", name: "Amanda Dillon", pronouns: "She/Her", bio: "testbio8", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact cont9 = Contact(id: "16E372AE-6DF5-425F-BBA9-D62338F7D44D", name: "Carly Sylvester", pronouns: "She/Her", bio: "testbio9", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact cont10 = Contact(id: "AC0BC022-6CA9-4503-8E02-9E30BAD522E2", name: "William Masters", pronouns: "He/Him", bio: "testbio10", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    Contact cont11 = Contact(id: "A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", name: "TestUser2", pronouns: "He/Him", bio: "I'm the second test user for Peregrine!", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
+    //Contact cont11 = Contact(id: "550516DA-9F37-483F-AB87-A0DAA19203D9", name: "TestUser1", pronouns: "He/Him", bio: "I'm the first test user for Peregrine!", pic: Uint8List(8), lastModified: "2025-03-14 22:27:29.761970");
     await addContact(cont1);
     await addContact(cont2);
     await addContact(cont3);
@@ -239,19 +242,31 @@ class ClientDB{
     await addContact(cont8);
     await addContact(cont9);
     await addContact(cont10);
+    await addContact(cont11);
 
-    Conversation conv1 = Conversation(convoID: "1", convoMembers: ["0", "3"], lastModified: "2025-03-14 22:27:29.761970");
-    Conversation conv2 = Conversation(convoID: "2", convoMembers: ["0", "7"], lastModified: "2025-03-14 22:27:29.761970");
-    Conversation conv3 = Conversation(convoID: "3", convoMembers: ["0", "10"], lastModified: "2025-03-14 22:27:29.761970");
+    Conversation conv1 = Conversation(convoID: "2EF90485-DEE0-406D-9573-6219CCBEA82A", convoMembers: ["550516DA-9F37-483F-AB87-A0DAA19203D9", "67C6D4B3-7BD8-45F5-A8C8-12504C5FB65B"], lastModified: "2025-03-14 22:27:29.761970");
+    Conversation conv2 = Conversation(convoID: "B5BE731D-2A89-4427-9645-DD1B256B9163", convoMembers: ["550516DA-9F37-483F-AB87-A0DAA19203D9", "F2D0CF5D-DF23-408A-97A3-DBD672E75D74"], lastModified: "2025-03-14 22:27:29.761970");
+    Conversation conv3 = Conversation(convoID: "F5ED7DA2-40AD-417A-B0E4-F06BCB2F622F", convoMembers: ["550516DA-9F37-483F-AB87-A0DAA19203D9", "AC0BC022-6CA9-4503-8E02-9E30BAD522E2"], lastModified: "2025-03-14 22:27:29.761970");
+    Conversation conv4 = Conversation(convoID: "0D50D38E-C2B9-41F3-B28B-7A59A7264718", convoMembers: ["550516DA-9F37-483F-AB87-A0DAA19203D9", "A052F0CB-235B-4A6A-BAF5-A1E4903FDD75"], lastModified: "2025-03-14 22:27:29.761970");
+    //Conversation conv1 = Conversation(convoID: "2EF90485-DEE0-406D-9573-6219CCBEA82A", convoMembers: ["A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", "67C6D4B3-7BD8-45F5-A8C8-12504C5FB65B"], lastModified: "2025-03-14 22:27:29.761970");
+    //Conversation conv2 = Conversation(convoID: "B5BE731D-2A89-4427-9645-DD1B256B9163", convoMembers: ["A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", "F2D0CF5D-DF23-408A-97A3-DBD672E75D74"], lastModified: "2025-03-14 22:27:29.761970");
+    //Conversation conv3 = Conversation(convoID: "F5ED7DA2-40AD-417A-B0E4-F06BCB2F622F", convoMembers: ["A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", "AC0BC022-6CA9-4503-8E02-9E30BAD522E2"], lastModified: "2025-03-14 22:27:29.761970");
+    //Conversation conv4 = Conversation(convoID: "0D50D38E-C2B9-41F3-B28B-7A59A7264718", convoMembers: ["A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", "550516DA-9F37-483F-AB87-A0DAA19203D9"], lastModified: "2025-03-14 22:27:29.761970");
     await addConvo(conv1);
     await addConvo(conv2);
     await addConvo(conv3);
+    await addConvo(conv4);
 
-    MsgLog msg1 = MsgLog(convoID: "1", msgID: "1", msgType: "Text", senderID: "3", rcvTime: "2025-03-10 22:27:29.761970", message: utf8.encode("Meeting today at 4:15pm."));
-    MsgLog msg2 = MsgLog(convoID: "2", msgID: "2", msgType: "Text", senderID: "0", rcvTime: "2025-03-11 22:27:29.761970", message: utf8.encode("Are you still available for the function on Wednesday?"));
-    MsgLog msg3 = MsgLog(convoID: "1", msgID: "3", msgType: "Text", senderID: "0", rcvTime: "2025-03-12 22:27:29.761970", message: utf8.encode("Ok. Thanks for the heads up!"));
-    MsgLog msg4 = MsgLog(convoID: "3", msgID: "4", msgType: "Text", senderID: "7", rcvTime: "2025-03-13 22:27:29.761970", message: utf8.encode("Could you let Adam know I'm not going to make it in time?"));
-    MsgLog msg5 = MsgLog(convoID: "2", msgID: "5", msgType: "Text", senderID: "10", rcvTime: "2025-03-14 22:27:29.761970", message: utf8.encode("Still waiting to get my time off request approved."));
+    MsgLog msg1 = MsgLog(convoID: "2EF90485-DEE0-406D-9573-6219CCBEA82A", msgID: "B4BD90BD-2510-43D7-8173-3054086793F2", msgType: "Text", senderID: "67C6D4B3-7BD8-45F5-A8C8-12504C5FB65B", rcvTime: "2025-03-10 22:27:29.761970", message: utf8.encode("Meeting today at 4:15pm."));
+    MsgLog msg2 = MsgLog(convoID: "B5BE731D-2A89-4427-9645-DD1B256B9163", msgID: "3F47C2B3-8EED-43CF-BD51-76AA794F4B70", msgType: "Text", senderID: "550516DA-9F37-483F-AB87-A0DAA19203D9", rcvTime: "2025-03-11 22:27:29.761970", message: utf8.encode("Are you still available for the function on Wednesday?"));
+    MsgLog msg3 = MsgLog(convoID: "2EF90485-DEE0-406D-9573-6219CCBEA82A", msgID: "E07AFE9E-8EAC-4C55-ACD0-A6BADCF66C25", msgType: "Text", senderID: "550516DA-9F37-483F-AB87-A0DAA19203D9", rcvTime: "2025-03-12 22:27:29.761970", message: utf8.encode("Ok. Thanks for the heads up!"));
+    MsgLog msg4 = MsgLog(convoID: "F5ED7DA2-40AD-417A-B0E4-F06BCB2F622F", msgID: "3ED213DF-7CBE-4655-B7B3-262CB047B738", msgType: "Text", senderID: "F2D0CF5D-DF23-408A-97A3-DBD672E75D74", rcvTime: "2025-03-13 22:27:29.761970", message: utf8.encode("Could you let Adam know I'm not going to make it in time?"));
+    MsgLog msg5 = MsgLog(convoID: "B5BE731D-2A89-4427-9645-DD1B256B9163", msgID: "3534579A-17FF-4032-86A8-821D4119BE70", msgType: "Text", senderID: "AC0BC022-6CA9-4503-8E02-9E30BAD522E2", rcvTime: "2025-03-14 22:27:29.761970", message: utf8.encode("Still waiting to get my time off request approved."));
+    //MsgLog msg1 = MsgLog(convoID: "2EF90485-DEE0-406D-9573-6219CCBEA82A", msgID: "B4BD90BD-2510-43D7-8173-3054086793F2", msgType: "Text", senderID: "67C6D4B3-7BD8-45F5-A8C8-12504C5FB65B", rcvTime: "2025-03-10 22:27:29.761970", message: utf8.encode("Meeting today at 4:15pm."));
+    //MsgLog msg2 = MsgLog(convoID: "B5BE731D-2A89-4427-9645-DD1B256B9163", msgID: "3F47C2B3-8EED-43CF-BD51-76AA794F4B70", msgType: "Text", senderID: "A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", rcvTime: "2025-03-11 22:27:29.761970", message: utf8.encode("Are you still available for the function on Wednesday?"));
+    //MsgLog msg3 = MsgLog(convoID: "2EF90485-DEE0-406D-9573-6219CCBEA82A", msgID: "E07AFE9E-8EAC-4C55-ACD0-A6BADCF66C25", msgType: "Text", senderID: "A052F0CB-235B-4A6A-BAF5-A1E4903FDD75", rcvTime: "2025-03-12 22:27:29.761970", message: utf8.encode("Ok. Thanks for the heads up!"));
+    //MsgLog msg4 = MsgLog(convoID: "F5ED7DA2-40AD-417A-B0E4-F06BCB2F622F", msgID: "3ED213DF-7CBE-4655-B7B3-262CB047B738", msgType: "Text", senderID: "F2D0CF5D-DF23-408A-97A3-DBD672E75D74", rcvTime: "2025-03-13 22:27:29.761970", message: utf8.encode("Could you let Adam know I'm not going to make it in time?"));
+    //MsgLog msg5 = MsgLog(convoID: "B5BE731D-2A89-4427-9645-DD1B256B9163", msgID: "3534579A-17FF-4032-86A8-821D4119BE70", msgType: "Text", senderID: "AC0BC022-6CA9-4503-8E02-9E30BAD522E2", rcvTime: "2025-03-14 22:27:29.761970", message: utf8.encode("Still waiting to get my time off request approved."));
     await addMsgLog(msg1);
     await addMsgLog(msg2);
     await addMsgLog(msg3);
