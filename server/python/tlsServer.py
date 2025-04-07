@@ -165,6 +165,7 @@ def handleNewConvoRequest(clientRequest: dict):
     if not expectedKeys.issubset(keys):
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='One or more required JSON keys are missing from the request.')
 
+    print("Type of key RecipientIds is:", type(clientRequest['RecipientIds']))
     sanityChecks = [
         type(clientRequest['Command']) == str,
         type(clientRequest['UserId']) == str,
