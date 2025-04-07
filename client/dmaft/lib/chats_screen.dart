@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -26,7 +27,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
   ({List<Conversation> list, List<String> names}) conversationList = (list: [], names: []);
   ({List<Conversation> list, List<String> names}) _filteredList = (list: [], names: []);
   late List<bool> _selected;
-  List<MsgLog> messages = [];
+  static Map<String, List<MsgLog>> messages = {}; //Stores the message logs for each conversation. Accessed using the convoID.
 
   Map<String, Map<String, String>> userIDsToNames = {}; //Holds the userIDs and userNames for participants in each conversation.
 
@@ -34,8 +35,25 @@ class _ChatsScreenState extends State<ChatsScreen> {
   bool isSelectionMode = false;
   bool _selectAll = false;
 
+  late String userID;
+
+  StreamController<Map<String, List<MsgLog>>> messageController = StreamController<Map<String, List<MsgLog>>>.broadcast();
+  final ScrollController _scrollController = ScrollController();
+
+  Timer? timer; //Used to periodically refresh the message stream to see sent messages.
+
   @override
   void initState() {
+    fetchAllMessages();
+
+    //Passes the messageController the current messages state.
+    timer = Timer.periodic(Duration(seconds: 1), (Timer t) => fetchAllMessages());
+    
+    
+    getUserID().then((response){
+      userID = response;
+    });
+
     getConversationInfo().then((response) {
       setState(() {
         conversationList = (list: response.$1, names: response.$2);
@@ -45,6 +63,19 @@ class _ChatsScreenState extends State<ChatsScreen> {
     });
     _searchController.addListener(_performSearch);
     super.initState();
+  }
+
+  //Fetches all messages in the database and passes the info on to the message stream.
+  Future<void> fetchAllMessages() async {
+    //Fill the messages static variable with all conversations' existing messageLogs.
+    databaseService.getAllConvos().then((response) async{
+      List<Conversation> conversations = response;
+      for(int i = 0; i < conversations.length; i++){
+        messages[conversations[i].convoID] = await getChatMessages(conversations[i].convoID);
+      } 
+    });
+    //Update the message stream.
+    messageController.add(messages);
   }
 
   // Gets the conversations from the client database.
@@ -72,11 +103,12 @@ class _ChatsScreenState extends State<ChatsScreen> {
   // Gets the messages of a specific conversation from the client database.
   Future<List<MsgLog>> getChatMessages(String conversationId) async {
     List<MsgLog> logs = await databaseService.getMsgLogs(conversationId);
-    print('This is in the getChatMessages method:');
-    for (int i = 0; i < logs.length; i++) {
-      print(logs[i].senderID + logs[i].rcvTime);
-    }
     return logs;
+  }
+
+  Future<void> setChatMessageVariable(String convoID) async {
+    List<MsgLog> logs = await databaseService.getMsgLogs(convoID);
+    messages[convoID] = logs;
   }
 
   // Generates a message ID for a message in a conversation.
@@ -104,10 +136,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
 
   // Refreshes the messages in a conversation. Currently bugged iirc.
   void refreshMessages(String conversationId) {
+    
     getChatMessages(conversationId).then((response) {
-      setState(() {
-        messages = response;
-      });
+      //messages = response;
     });
   }
 
@@ -155,6 +186,20 @@ class _ChatsScreenState extends State<ChatsScreen> {
     });
   }
 
+  // Converts the Future of the current user to a Stream. This allows for refreshing the page after a change is made by the user.
+  Stream refreshPage() {
+    return Stream.fromFuture(getConversationInfo());
+  }
+
+  Stream refreshMessagePage(int index) {
+    return Stream.fromFuture(getChatMessages(_filteredList.list[index].convoID));
+  }
+
+  //When called, moves the scroll view all the way to the current bottom position.
+  void _scrollDown() {
+    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+  }
+
   @override
   Widget build(BuildContext context) {
 
@@ -195,8 +240,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
         ],
       ),
 
-      body: FutureBuilder(
-        future: getConversationInfo(),
+      body: StreamBuilder(
+        stream: refreshPage(),
+        //future: getConversationInfo(),
         builder: (BuildContext context, AsyncSnapshot snapshot) {
           if (snapshot.hasData) {
 
@@ -264,8 +310,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     onTap: () {
                       TextEditingController messageContent = TextEditingController();
 
-                      refreshMessages(_filteredList.list[index].convoID);
-
                       // Clicking on a conversation opens a page containing the messages part of that conversation.
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => Scaffold(
@@ -293,33 +337,74 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 padding: EdgeInsets.all(10.0)
                               ),
 
-                              FutureBuilder( // The messages portion of the conversation.
-                                future: Future.wait([getChatMessages(_filteredList.list[index].convoID), getUserID()]),
+                              StreamBuilder( // The messages portion of the conversation.
+                                stream: messageController.stream,
+                                //future: Future.wait([getChatMessages(_filteredList.list[index].convoID), getUserID()]),
+                                initialData: messages,
                                 builder: (BuildContext context2, AsyncSnapshot snapshot2) {
 
+                                  /*
                                   if (snapshot2.connectionState != ConnectionState.done) { // Left off here on trying to get the FutureBuilder to refresh.
                                     return Center(
                                       child: CircularProgressIndicator(),
                                     );
-                                  }
+                                  } */
+                                 //else
+                                  if (snapshot2.hasData) { // Messages are loaded in with the ListView.builder.
+                                    return Column(
+                                      children: [
+                                        SizedBox(
+                                            child: ListView.builder(
+                                              controller: _scrollController,
+                                              padding: EdgeInsets.zero,
+                                              itemCount: snapshot2.data[_filteredList.list[index].convoID].length,
+                                              itemBuilder: (context3, index2) {
+                                                
+                                                DateTime timestamp = DateTime.parse(snapshot2.data[_filteredList.list[index].convoID][index2].rcvTime).toLocal();
+                                                List<String> monthMap = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                                return ChatBubble(
+                                                  message: utf8.decode(snapshot2.data[_filteredList.list[index].convoID][index2].message),
+                                                  isSentByMe: (snapshot2.data[_filteredList.list[index].convoID][index2].senderID == userID),
+                                                  rcvTime: "${timestamp.hour.toString()}:${(timestamp.minute < 10) ? '0' : ''}${timestamp.minute.toString()} ${monthMap[timestamp.month - 1]} ${timestamp.day.toString()}",
+                                                );
+                                              } 
+                                            ),
+                                          ),
 
-                                  else if (snapshot2.hasData) { // Messages are loaded in with the ListView.builder.
-                                    return Expanded(
-                                      child: SizedBox(
-                                        child: ListView.builder(
-                                          itemCount: messages.length,
-                                          itemBuilder: (context3, index2) {
-                                            String userID = snapshot2.data[1];
-                                            DateTime timestamp = DateTime.parse(messages[index2].rcvTime).toLocal();
-                                            List<String> monthMap = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                                            return ChatBubble(
-                                              message: utf8.decode(messages[index2].message),
-                                              isSentByMe: (messages[index2].senderID == userID),
-                                              rcvTime: "${timestamp.hour.toString()}:${(timestamp.minute < 10) ? '0' : ''}${timestamp.minute.toString()} ${monthMap[timestamp.month - 1]} ${timestamp.day.toString()}",
-                                            );
-                                          } 
+                                        Row( // The textfield and sending portion of the conversation.
+                                          children: <Widget>[
+                                              Expanded(
+                                                child: TextField(
+                                                  controller: messageContent,
+                                                  decoration: const InputDecoration(
+                                                    hintText: 'Type Message',
+                                                  ),
+                                                  style: const TextStyle(color: Colors.black),
+                                                  cursorColor: Colors.black,
+                                                ),
+                                            ),
+
+                                            SizedBox(
+                                              width: 50,
+                                              child: IconButton(
+                                                onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
+                                                  print(messageContent.text);                                              
+                                                  String newMsgID = snapshot2.data[0];
+                                                  String userID = snapshot2.data[1];
+                                                  MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toUtc().toString(), message: utf8.encode(messageContent.text));
+                                                  databaseService.addMsgLog(log);
+                                                  Network net = Network();
+                                                  net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text, newMsgID);
+                                                  fetchAllMessages();
+                                                  _scrollDown();
+                                                  messageContent.clear();
+                                                },
+                                                icon: Icon(Icons.send),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
+                                      ],
                                     );
                                   }
 
@@ -332,57 +417,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 },
                               ),
 
-                              FutureBuilder(
-                                future: Future.wait([getMessageID(_filteredList.list[index].convoID), getUserID()]),
-                                builder: (BuildContext context2, AsyncSnapshot snapshot2) {
-
-                                  if (snapshot2.hasData) {
-
-                                    return Row( // The textfield and sending portion of the conversation.
-                                      children: <Widget>[
-                                        Expanded(
-                                          child: TextField(
-                                            controller: messageContent,
-                                            decoration: const InputDecoration(
-                                              hintText: 'Type Message',
-                                            ),
-                                            style: const TextStyle(color: Colors.black),
-                                            cursorColor: Colors.black,
-                                          ),
-                                        ),
-
-                                        SizedBox(
-                                          width: 50,
-                                          child: IconButton(
-                                            onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
-                                              print(messageContent.text);                                              
-                                              String newMsgID = snapshot2.data[0];
-                                              String userID = snapshot2.data[1];
-                                              MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toUtc().toString(), message: utf8.encode(messageContent.text));
-                                              databaseService.addMsgLog(log);
-                                              Network net = Network();
-                                              net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text, newMsgID);
-                                              refreshMessages(_filteredList.list[index].convoID);
-                                            },
-                                            icon: Icon(Icons.send),
-                                          ),
-                                        ),
-                                      
-                                      ],
-                                    );
-
-                                  }
-
-                                  else {
-                                    return CircularProgressIndicator();
-                                  }
-                                }
-                              
-                              
-                              ),
-
-                              
-
+          
                               Padding(
                                 padding: EdgeInsets.all(10.0)
                               ),
@@ -407,9 +442,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       }
                       else {
                         TextEditingController messageContent = TextEditingController();
-
-                        refreshMessages(_filteredList.list[index].convoID);
-
+                        setChatMessageVariable(_filteredList.list[index].convoID);
+                        //refreshMessages(_filteredList.list[index].convoID);
+                         messageController.add(messages);
                         // Clicking on a conversation opens a page containing the messages part of that conversation.
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (context) => Scaffold(
@@ -423,6 +458,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                   onPressed: () {
                                     databaseService.delConvo(conversationList.list[index]);
                                     refreshConversations();
+                                    setChatMessageVariable(_filteredList.list[index].convoID);
                                     Navigator.pop(context);
                                   },
                                   icon: Icon(Icons.delete),
@@ -435,23 +471,28 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 Padding(
                                   padding: EdgeInsets.all(10.0)
                                 ),
-
+                                /*
                                 FutureBuilder( // The messages portion of the conversation.
                                   future: Future.wait([getChatMessages(conversationList.list[index].convoID), getUserID()]),
                                   builder: (BuildContext context2, AsyncSnapshot snapshot2) {
-
+                                */
+                                StreamBuilder( // The messages portion of the conversation.
+                                  stream: messageController.stream,
+                                  initialData: messages,
+                                  builder: (BuildContext context2, AsyncSnapshot snapshot2) {
                                     if (snapshot2.hasData) { // Messages are loaded in with the ListView.builder.
                                       return Expanded(
                                         child: SizedBox(
                                           child: ListView.builder(
-                                            itemCount: messages.length,
+                                            controller: _scrollController,
+                                            padding: EdgeInsets.zero,
+                                            itemCount: snapshot2.data[_filteredList.list[index].convoID].length,
                                             itemBuilder: (context3, index2) {
-                                              String userID = snapshot2.data[1];
-                                              DateTime timestamp = DateTime.parse(messages[index2].rcvTime).toLocal();
+                                              DateTime timestamp = DateTime.parse(snapshot2.data[_filteredList.list[index].convoID][index2].rcvTime).toLocal();
                                               List<String> monthMap = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                                               return ChatBubble(
-                                                message: utf8.decode(messages[index2].message),
-                                                isSentByMe: (messages[index2].senderID == userID),
+                                                message: utf8.decode(snapshot2.data[_filteredList.list[index].convoID][index2].message),
+                                                isSentByMe: (snapshot2.data[_filteredList.list[index].convoID][index2].senderID == userID),
                                                 rcvTime: "${timestamp.hour.toString()}:${(timestamp.minute < 10) ? '0' : ''}${timestamp.minute.toString()} ${monthMap[timestamp.month - 1]} ${timestamp.day.toString()}",
                                               );
                                             }
@@ -459,7 +500,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                         ),
                                       );
                                     }
-
                                     else {
                                       return Center(
                                         child: CircularProgressIndicator(),
@@ -470,7 +510,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                 ),
 
                                 FutureBuilder(
-                                  future: Future.wait([getMessageID(conversationList.list[index].convoID), getUserID()]),
+                                  future: getUserID(),
                                   builder: (BuildContext context2, AsyncSnapshot snapshot2) {
 
                                     if (snapshot2.hasData) {
@@ -487,7 +527,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                                   final PlatformFile file = result.files.first;
                                                   setState(() {
                                                   });
-                                                  },
+                                                },
                                                 icon: Icon(Icons.upload),
                                               ),
                                             ),
@@ -508,16 +548,18 @@ class _ChatsScreenState extends State<ChatsScreen> {
                                           SizedBox(
                                             width: 50,
                                             child: IconButton(
-                                              onPressed: () { // Need to fix the refresh to work with refreshing the futurebuilder
-                                                print(messageContent.text);                                              
-                                                String newMsgID = snapshot2.data[0];
-                                                String userID = snapshot2.data[1];
+                                              onPressed: () async { // Need to fix the refresh to work with refreshing the futurebuilder
+                                                String newMsgID = await getMessageID(conversationList.list[index].convoID);                                              
+                                                String userID = snapshot2.data;
                                                 MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toUtc().toString(), message: utf8.encode(messageContent.text));
                                                 databaseService.addMsgLog(log);
                                                 Network net = Network();
                                                 net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text, newMsgID);
-                                                refreshMessages(_filteredList.list[index].convoID);
-                                              },
+                                                //refreshMessages(_filteredList.list[index].convoID);
+                                                fetchAllMessages();
+                                                _scrollDown();
+                                                messageContent.clear();
+                                                },
                                               icon: Icon(Icons.send),
                                             ),
                                           ),
@@ -590,7 +632,7 @@ class ChatBubble extends StatelessWidget {
       alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-        padding: EdgeInsets.all(10),
+        padding: EdgeInsets.zero,
         constraints: BoxConstraints(maxWidth: 250),
         decoration: BoxDecoration(
           color: isSentByMe ? Color.fromRGBO(4, 150, 255, 1) : Colors.white,

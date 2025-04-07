@@ -97,12 +97,26 @@ void startNetwork() async {
   net.connectAndAuth();
 }
 
+//Retrieves the settings file contents and, if automatic history management is enabled, deletes any message logs older than the set period.
+void enforceMessageHistory() async{
+  FileAccess fileService = FileAccess.instance;
+  ClientDB dbService = ClientDB.instance;
+  Map<String, dynamic> settings = await fileService.getSettings();
+  //Enforce current history settings.
+  if(settings["deleteHistory"] == true){
+    await dbService.delOlderMsgLogs(settings["historyDuration"]);
+  }
+}
+
 class DMAFT extends StatelessWidget {
   const DMAFT({super.key});
 
   // This widget is the root of the DMAFT app.
   @override
   Widget build(BuildContext context) {
+
+    //Enforce current automatic message history management settings.
+    enforceMessageHistory();
 
     startNetwork();
     //setIdAndKeyPair1(); // Run this on the first client.

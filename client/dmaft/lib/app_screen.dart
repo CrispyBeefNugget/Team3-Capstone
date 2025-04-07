@@ -226,8 +226,8 @@ class _AppScreenState extends State<AppScreen> {
             label: 'Contacts',
           ),
 
-          NavigationDestination( // Conversations tab.
-            icon: Badge(
+          /* Remnants from old "unread message count" system
+          Badge(
               label: Text(''),
               // FutureBuilder( // No longer implemented due to time constraints.
               //   future: getMessageCount(),
@@ -240,8 +240,13 @@ class _AppScreenState extends State<AppScreen> {
               //     }
               //   },
               // ),             
-              child: Icon(Icons.message_rounded),
-            ),
+              child: 
+          */
+
+          NavigationDestination( // Conversations tab.
+            icon: Icon(
+              Icons.message_rounded
+              ),
             label: 'Conversations',
           ),
 

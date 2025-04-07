@@ -26,12 +26,12 @@ ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 # ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
 
 # Jeremey's path
-ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
-ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
+# ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
+# ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
 
 # Ben's path
-# ssl_cert = 'C:\Users\Ben\Desktop\dmaft-tls_cert.pem'
-# ssl_key = 'C:\Users\Ben\Desktop\dmaft-tls_key.pem'
+ssl_cert = 'C:\\Users\\Ben\\Desktop\\dmaft-tls_cert.pem'
+ssl_key = 'C:\\Users\\Ben\\Desktop\\dmaft-tls_key.pem'
 
 ssl_context.load_cert_chain(ssl_cert, keyfile=ssl_key)
 
