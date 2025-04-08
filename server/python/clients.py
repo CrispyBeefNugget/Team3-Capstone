@@ -72,7 +72,10 @@ class ConnectionList:
     def broadcastToUsers(self, userList: list[str], msgData: bytes):
         usersRemaining = userList
         successStatus = False
+        print("ConnectionList.broadcastToUsers(): Received user list", userList)
         for user in userList:
+            print("ConnectionList.broadcastToUsers(): Contents of userList is", userList)
+            print("ConnectionList.broadcastToUsers(): Attempting to send message to user", user)
             if self.sendMsgToUser(user, msgData):
                 usersRemaining.remove(user)
                 print("Successfully delivered message to user " + user)

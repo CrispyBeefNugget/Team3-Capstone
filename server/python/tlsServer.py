@@ -228,6 +228,7 @@ def handleNewConvoRequest(clientRequest: dict):
         'ConversationId':conversationID
     }
     newConversationMsg = json.dumps(newConversationData)
+    print("Recipients that should receive a broadcast message:", recipients)
     remainingUsers = connectedClients.broadcastToUsers(recipients, newConversationMsg)
 
     #If any recipients missed the notification, store it in the mailbox to send to them later.
