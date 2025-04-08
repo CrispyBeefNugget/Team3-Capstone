@@ -71,15 +71,6 @@ class _AppScreenState extends State<AppScreen> {
   //   return dbConversations.length;
   // }
 
-  Future<void> startConvo(String userID) async {
-    final net = Network();
-    net.createNewConversation([userID]);
-    Navigator.pop(context);
-
-    
-
-  }
-
   @override
   void dispose() {
     super.dispose();
@@ -125,7 +116,11 @@ class _AppScreenState extends State<AppScreen> {
                           ),
                           TextButton(
                             child: Text('Submit'),
-                            onPressed: () => startConvo(userIDController.text),
+                            onPressed: () async {
+                              final net = Network();
+                              net.createNewConversation([userIDController.text]);
+                              Navigator.pop(context);
+                            }
                           ),
 
                           // Does not work. The whole block of code in the MaterialPageRoute may need to be put in either a FutureBuilder or StreamBuilder.
