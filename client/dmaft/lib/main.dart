@@ -140,7 +140,7 @@ class DMAFT extends StatelessWidget {
 // Handles the sending and receiving of messages over the network and updates the client DB accordingly.
 class Handler {
 
-  static void handleMessage(Map data) async {
+  static void handleMessage(var data) async {
 
     final ClientDB databaseService = ClientDB.instance;
 
@@ -153,8 +153,8 @@ class Handler {
             return;
           }
         }
-
-        Conversation convo = Conversation(convoID: data['ConversationId'], convoMembers: data['Members'], lastModified: DateTime.now().toUtc().toString());
+        List<String> members = (data['Members'] as List).map((item) => item as String).toList();
+        Conversation convo = Conversation(convoID: data['ConversationId'], convoMembers: members, lastModified: DateTime.now().toUtc().toString());
         databaseService.addConvo(convo);
 
       case 'INCOMINGMESSAGE':
