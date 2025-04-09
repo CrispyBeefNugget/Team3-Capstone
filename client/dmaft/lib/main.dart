@@ -70,6 +70,7 @@ void setIdAndKeyPair2() async {
 void startNetwork() async {
 
   final FileAccess fileHelper = FileAccess.instance;
+  final dbHelper = ClientDB.instance;
   final net = Network();
 
   try {
@@ -97,7 +98,10 @@ void startNetwork() async {
     Handler.handleMessage(data);
   });
   print("Finished setting up the listener for the UI!");
-  net.connectAndAuth();
+  net.connectAndAuth().then((data) async {
+    final profile = await dbHelper.getUser();
+    net.updateProfileOnServer(profile.name, profile.pic, profile.pronouns, profile.bio);
+  });
 }
 
 //Retrieves the settings file contents and, if automatic history management is enabled, deletes any message logs older than the set period.
@@ -156,6 +160,7 @@ class Handler {
         List<String> members = (data['Members'] as List).map((item) => item as String).toList();
         Conversation convo = Conversation(convoID: data['ConversationId'], convoMembers: members, lastModified: DateTime.now().toUtc().toString());
         databaseService.addConvo(convo);
+
 
       case 'INCOMINGMESSAGE':
         const requiredKeys = ['OriginalReceiptTimestamp', 'MessageId', 'SenderId', 'ConversationId', 'MessageType', 'MessageData'];

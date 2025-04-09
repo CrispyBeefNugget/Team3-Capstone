@@ -2,6 +2,7 @@ import websockets
 import websockets.asyncio
 import websockets.asyncio.server
 import asyncio
+import copy
 
 class ConnectionList:
     def __init__(self):
@@ -70,7 +71,7 @@ class ConnectionList:
         return successStatus
 
     def broadcastToUsers(self, userList: list[str], msgData: bytes):
-        usersRemaining = userList
+        usersRemaining = copy.deepcopy(userList)
         successStatus = False
         print("ConnectionList.broadcastToUsers(): Received user list", userList)
         for user in userList:

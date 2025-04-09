@@ -244,7 +244,6 @@ class Network {
     }
   }
 
-
   //A "synchronous" operation that directly returns the results it gets.
   //How it works:
   //1. Ensure we're already connected and authenticated to the server.
@@ -292,6 +291,65 @@ class Network {
     });
   }
 
+  //Update the server with the user's current profile data.
+  //If "wait" is true AND the caller awaits the results,
+  //this method blocks and waits for the server to confirm success.
+  //Otherwise, it just sends a request to the server and exits.
+  Future<dynamic> updateProfileOnServer(
+    String newUserName, 
+    Uint8List newProfilePic, 
+    String newPronouns, 
+    String newBio,
+    {bool waitUntilDone = false}
+    ) async {
+      if (! wbsAddressRegex.hasMatch(_serverURL)) {
+      throw FormatException('Invalid WebSocket URL given. Should be of format: ws[s]://myFQDN.tld:port or ws[s]://0.0.0.0:port');
+    }
+    if (_publicKey == null || _privateKey == null) {
+      throw AuthenticationKeypairMissing();
+    }
+
+    if (waitUntilDone) {  //User requested to wait until server confirms. Spawn a temporary WebSocket, then shut down once done.
+      final operationID = Uuid().v4();
+      final wsUrl = Uri.parse(_serverURL);
+      return connectAndAuth().then((data) async {
+        final channel = WebSocketChannel.connect(wsUrl);
+        await channel.ready; //Make a second temporary connection to the server
+        print("Making the profile update request now!");
+        var requestJson = _constructUpdateProfileRequest(newUserName, newProfilePic, newPronouns, newBio, operationID: operationID);
+        _opsInProgress[operationID] = channel;
+        print("Sending the profile update request now!");
+        channel.sink.add(requestJson);
+        await for (final msg in channel.stream) {
+          _handleServerResponse(msg);
+        }
+
+        if (_opsInProgress[operationID] == null) {
+          throw Exception('Failed to retrieve the results of profile update operation $operationID');
+        }
+        final result = _opsInProgress[operationID];
+        _opsInProgress.remove(operationID);
+
+        try {
+          if (result['Successful'].toString().toUpperCase() == 'TRUE') {
+            return true;
+          }
+          else return false;
+        }
+        catch(e) {
+          return false;
+        }
+      });
+    }
+    else { //User requested to skip server confirmation
+      connectAndAuth().then((data) {
+        print("Making the profile update request now!");
+        var requestJson = _constructUpdateProfileRequest(newUserName, newProfilePic, newPronouns, newBio);
+        print("Sending the profile update request now!");
+        _serverSock!.sink.add(requestJson);
+      });
+    }
+  }
 
   //CLIENT STREAM HANDLER METHODS HERE
 
@@ -503,6 +561,9 @@ class Network {
 
       case 'SEARCHUSERS':
         return _handleSearchResponse(parsedMsg);
+
+      case 'UPDATEPROFILE':
+        return _handleProfileUpdateResponse(parsedMsg);
     }
   }
 
@@ -600,6 +661,25 @@ Each of these handles a specific kind of message.
     }
   }
 
+  void _handleProfileUpdateResponse(Map responseMsg) {
+    if (!_isValidProfileUpdateResponse(responseMsg)) {
+      print("Network._handleSearchResponse(): Received invalid response from server!");
+      responseMsg['Successful'] = false;
+    }
+    print("Profile update successful!");
+    if (responseMsg['OperationId'] != null) {
+      final opID = responseMsg['OperationId'];
+      if (_opsInProgress[opID] != null) {
+        final WebSocketChannel tempChannel = _opsInProgress[opID];
+        tempChannel.sink.close(3000);
+      }
+      else {
+        print("Network WARNING: Received profile update response with operation ID $opID but no temporary websocket found.");
+      }
+      _opsInProgress[opID] = responseMsg;
+    }
+  }
+
   void _handleIncomingMsg(Map serverMsg) {
     if (!_isValidIncomingMsg(serverMsg)) {
       print("Received incoming message but it is invalid!");
@@ -616,6 +696,7 @@ Each of these handles a specific kind of message.
       print("Received new conversation message but it is invalid.");
       return;
     }
+
     clientSock.sink.add(serverMsg);
   }
 
@@ -762,13 +843,14 @@ Can vary from data integrity checks to sub-functions.
       'ConversationId',
       'CreatorId',
       'Members',
+      'MemberData'
       ];
     for (final rkey in requiredKeys) {
       if (!responseData.containsKey(rkey)) {
         print("Required key " + rkey + " is missing!");
         return false;
       }
-      if (rkey == 'Members') { //Don't check for Members to be a String value
+      if ((rkey == 'Members') || (rkey == 'MemberData')) { //Don't check for Members to be a String value
         continue;
       }
       if (responseData[rkey] is! String) {
@@ -808,7 +890,24 @@ Can vary from data integrity checks to sub-functions.
         return false;
       }
     }
+    return true;
+  }
 
+  bool _isValidProfileUpdateResponse(Map responseData) {
+    const requiredKeys = [
+      'Command',
+      'Successful',
+      ];
+    for (final rkey in requiredKeys) {
+      if (!responseData.containsKey(rkey)) {
+        print("Required key " + rkey + " is missing!");
+        return false;
+      }
+      if (responseData[rkey] is! String) {
+        print("Required key " + rkey + " does not have a String value!");
+        return false;
+      }
+    }
     return true;
   }
 

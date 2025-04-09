@@ -22,16 +22,16 @@ import handleAuth
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
 # Nigel's path
-# ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
-# ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
+ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
+ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
 
 # Jeremey's path
 # ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
 # ssl_key = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_key.pem'
 
 # Ben's path
-ssl_cert = 'C:\\Users\\Ben\\Desktop\\dmaft-tls_cert.pem'
-ssl_key = 'C:\\Users\\Ben\\Desktop\\dmaft-tls_key.pem'
+# ssl_cert = 'C:\\Users\\Ben\\Desktop\\dmaft-tls_cert.pem'
+# ssl_key = 'C:\\Users\\Ben\\Desktop\\dmaft-tls_key.pem'
 
 ssl_context.load_cert_chain(ssl_cert, keyfile=ssl_key)
 
@@ -219,12 +219,26 @@ def handleNewConvoRequest(clientRequest: dict):
         return makeError(clientRequest=clientRequest, errorCode='InvalidRecipientId', reason='The database detected that one of the provided User IDs is invalid.')
 
     #The conversation was successfully created.
+    #Get all profile data before notifying everyone.
+    recipientsData = []
+    for member in recipients:
+        result = dmaftServerDB.searchUserByID(connection=dbConn, userID=member)
+        data = {
+            'UserId':result[0],
+            'UserName':result[1],
+            'Status':result[2],
+            'Bio':result[3],
+            'ProfilePic':result[4],
+        }
+        recipientsData.append(data)
+
     #Notify everyone.
     newConversationData = {
         'Command':'NEWCONVERSATIONCREATED',
         'ServerTimestamp': time.time(),
         'CreatorId':sender,
         'Members':recipients,
+        'MemberData':recipientsData,
         'ConversationId':conversationID
     }
     newConversationMsg = json.dumps(newConversationData)
