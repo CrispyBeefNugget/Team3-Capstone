@@ -222,7 +222,7 @@ def handleNewConvoRequest(clientRequest: dict):
     #Get all profile data before notifying everyone.
     recipientsData = []
     for member in recipients:
-        result = dmaftServerDB.searchUserByID(connection=dbConn, userID=member)
+        result = dmaftServerDB.searchUserByID(connection=dbConn, userID=member)[0]
         data = {
             'UserId':result[0],
             'UserName':result[1],
@@ -475,7 +475,7 @@ def handleRequest(clientRequest, websocket: websockets.asyncio.server.ServerConn
         elif command == 'UPDATEPROFILE':
             return handleUpdateProfileRequest(clientRequest)
             
-            
+
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Invalid command received from client.')
 
 
