@@ -479,6 +479,9 @@ def handleRequest(clientRequest, websocket: websockets.asyncio.server.ServerConn
         
         elif command == 'UPDATEPROFILE':
             return handleUpdateProfileRequest(clientRequest)
+        
+        elif command == 'LEAVECONVERSATION':
+            return handleLeaveConvoRequest(clientRequest)
             
 
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Invalid command received from client.')

@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:dmaft/network.dart';
 
 
 
@@ -608,6 +609,12 @@ class ClientDB{
   //Description: Remove a message log entry from the database using the convoID. Will do nothing if the given conversation isn't in the database. NOTE: Also
   //  deletes the message log table for the conversation. Be careful with usage.
   Future<void> delConvo(Conversation convo) async{
+    //Network is instantiated to inform the server that we're leaving.
+    //This call is put at this level and not the UI since multiple pathways all lead here,
+    //and deleting contacts only iterates through this method.
+    final net = Network();
+    net.leaveConversation(convo.convoID);
+
     final db = await database;
     await db.rawQuery("""
     DELETE FROM $_conversationTableName 

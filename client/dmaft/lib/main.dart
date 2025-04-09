@@ -215,6 +215,29 @@ class Handler {
         await clientDBHelper.modifyUser(Contact(id: data['UserId'], name: "", pronouns: "", bio: "", pic: Uint8List(8), lastModified: DateTime.now().toUtc().toString())); //Adds the newly-assigned UUID to the userID database field.
         await fileHelper.setRSAKeys(data['p'], data['q'], data['n'], data['d'], data['e']);
         print("UI saved credentials for new user " + data['UserId'] + "!");
+
+      case 'USERLEFT':
+        String leavingUserName = '';
+        try {
+          final Contact targetContact = (await databaseService.getContacts(data['LeavingUserId']))[0];
+          leavingUserName = targetContact.name;
+        }
+        catch(e) {
+          leavingUserName = 'name unresolved';
+        }
+        
+        final userLeftText = 'User ID ${data['LeavingUserId']} ($leavingUserName) has left this conversation. Future messages will not be delivered to them in this conversation.';
+        print(DateTime.now().toUtc().toString());
+        MsgLog sysMessage = MsgLog(
+          convoID: data['ConversationId'],
+          msgID: 'SERVER:UserLeft', //This was hardcoded; randomize this if group conversations are supported 
+          msgType: 'Text',
+          senderID: data['LeavingUserId'],
+          rcvTime: DateTime.now().toUtc().toString(), 
+          message: utf8.encode(userLeftText)
+        );
+        databaseService.addMsgLog(sysMessage);
+
       default:
     }
   }
