@@ -335,90 +335,116 @@ class _ChatsScreenState extends State<ChatsScreen> {
                           ),
 
                           body: Column(
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.all(10.0)
-                              ),
+                              children: [
 
-                              StreamBuilder( // The messages portion of the conversation.
-                                stream: messageController.stream,
-                                initialData: messages,
-                                builder: (BuildContext context2, AsyncSnapshot snapshot2) {
+                                Padding(
+                                  padding: EdgeInsets.all(10.0)
+                                ),
 
-                                 //else
-                                  if (snapshot2.hasData) { // Messages are loaded in with the ListView.builder.
-                                    return Column(
-                                      children: [
-                                        SizedBox(
-                                            child: ListView.builder(
-                                              controller: _scrollController,
-                                              padding: EdgeInsets.zero,
-                                              itemCount: snapshot2.data[_filteredList.list[index].convoID].length,
-                                              itemBuilder: (context3, index2) {
-                                                
-                                                DateTime timestamp = DateTime.parse(snapshot2.data[_filteredList.list[index].convoID][index2].rcvTime).toLocal();
-                                                List<String> monthMap = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                                                return ChatBubble(
-                                                  message: utf8.decode(snapshot2.data[_filteredList.list[index].convoID][index2].message),
-                                                  isSentByMe: (snapshot2.data[_filteredList.list[index].convoID][index2].senderID == userID),
-                                                  rcvTime: "${timestamp.hour.toString()}:${(timestamp.minute < 10) ? '0' : ''}${timestamp.minute.toString()} ${monthMap[timestamp.month - 1]} ${timestamp.day.toString()}",
-                                                );
-                                              } 
-                                            ),
+                                StreamBuilder( // The messages portion of the conversation.
+                                  stream: messageController.stream,
+                                  initialData: messages,
+                                  builder: (BuildContext context2, AsyncSnapshot snapshot2) {
+                                    if (snapshot2.hasData) { // Messages are loaded in with the ListView.builder.
+                                      return Expanded(
+                                        child: SizedBox(
+                                          child: ListView.builder(
+                                            controller: _scrollController,
+                                            padding: EdgeInsets.zero,
+                                            itemCount: snapshot2.data[_filteredList.list[index].convoID].length,
+                                            itemBuilder: (context3, index2) {
+                                              DateTime timestamp = DateTime.parse(snapshot2.data[_filteredList.list[index].convoID][index2].rcvTime).toLocal();
+                                              List<String> monthMap = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                              return ChatBubble(
+                                                message: utf8.decode(snapshot2.data[_filteredList.list[index].convoID][index2].message),
+                                                isSentByMe: (snapshot2.data[_filteredList.list[index].convoID][index2].senderID == userID),
+                                                rcvTime: "${timestamp.hour.toString()}:${(timestamp.minute < 10) ? '0' : ''}${timestamp.minute.toString()} ${monthMap[timestamp.month - 1]} ${timestamp.day.toString()}",
+                                              );
+                                            }
                                           ),
+                                        ),
+                                      );
+                                    }
+                                    else {
+                                      return Center(
+                                        child: CircularProgressIndicator(),
+                                      );
+                                    }
 
-                                        Row( // The textfield and sending portion of the conversation.
-                                          children: <Widget>[
-                                              Expanded(
-                                                child: TextField(
-                                                  controller: messageContent,
-                                                  decoration: const InputDecoration(
-                                                    hintText: 'Type Message',
-                                                  ),
-                                                  style: const TextStyle(color: Colors.black),
-                                                  cursorColor: Colors.black,
-                                                ),
-                                            ),
+                                  },
+                                ),
 
-                                            SizedBox(
+                                FutureBuilder(
+                                  future: getUserID(),
+                                  builder: (BuildContext context2, AsyncSnapshot snapshot2) {
+
+                                    if (snapshot2.hasData) {
+
+                                      return Row( // The textfield and sending portion of the conversation.
+                                        children: <Widget>[
+                                          //Upload icon.
+                                            /* Not enough time to implement this.
+                                            SizedBox( 
                                               width: 50,
                                               child: IconButton(
-                                                onPressed: () { // Message is sent.                                       
-                                                  String newMsgID = snapshot2.data[0];
-                                                  String userID = snapshot2.data[1];
-                                                  MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toUtc().toString(), message: utf8.encode(messageContent.text));
-                                                  databaseService.addMsgLog(log);
-                                                  Network net = Network();
-                                                  net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text, newMsgID);
-                                                  fetchAllMessages();
-                                                  
-                                                  messageContent.clear();
+                                                onPressed: () async {
+                                                  final result = await FilePicker.platform.pickFiles();
+                                                  if(result == null) return;
+                                                  final PlatformFile file = result.files.first;
+                                                  setState(() {
+                                                  });
                                                 },
-                                                icon: Icon(Icons.send),
+                                                icon: Icon(Icons.upload),
                                               ),
                                             ),
-                                          ],
-                                        ),
-                                      ],
-                                    );
+                                          */ 
+                                          //Message text field.
+                                          Expanded(
+                                            child: TextField(
+                                              controller: messageContent,
+                                              decoration: const InputDecoration(
+                                                hintText: 'Type Message',
+                                              ),
+                                              style: const TextStyle(color: Colors.black),
+                                              cursorColor: Colors.black,
+                                            ),
+                                          ),
+                                          
+                                          //Send icon.
+                                          SizedBox(
+                                            width: 50,
+                                            child: IconButton(
+                                              onPressed: () async { // Need to fix the refresh to work with refreshing the futurebuilder
+                                                String newMsgID = await getMessageID(conversationList.list[index].convoID);                                              
+                                                String userID = snapshot2.data;
+                                                MsgLog log = MsgLog(convoID: _filteredList.list[index].convoID, msgID: newMsgID, msgType: 'Text', senderID: userID, rcvTime: DateTime.now().toUtc().toString(), message: utf8.encode(messageContent.text));
+                                                databaseService.addMsgLog(log);
+                                                Network net = Network();
+                                                net.sendTextMessage(_filteredList.list[index].convoID, messageContent.text, newMsgID);
+                                                //refreshMessages(_filteredList.list[index].convoID);
+                                                fetchAllMessages();
+                                                _scrollDown();
+                                                messageContent.clear();
+                                                },
+                                              icon: Icon(Icons.send),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }
+
+                                    else {
+                                      return CircularProgressIndicator();
+                                    }
+
                                   }
+                                ),
 
-                                  else {
-                                    return Center(
-                                      child: CircularProgressIndicator(),
-                                    );
-                                  }
-
-                                },
-                              ),
-
-          
-                              Padding(
-                                padding: EdgeInsets.all(10.0)
-                              ),
-
-                            ],
-                          )
+                                Padding(
+                                  padding: EdgeInsets.all(10.0)
+                                ),
+                              ],
+                            ),
                         ))
                       );
 
