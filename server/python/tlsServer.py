@@ -471,8 +471,11 @@ def handleRequest(clientRequest, websocket: websockets.asyncio.server.ServerConn
 
         elif command == 'SENDMESSAGE':
             return handleSendMessageRequest(clientRequest)
+        
+        elif command == 'UPDATEPROFILE':
+            return handleUpdateProfileRequest(clientRequest)
             
-
+            
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Invalid command received from client.')
 
 
@@ -525,7 +528,7 @@ async def listen(websocket: websockets.asyncio.server.ServerConnection):
 
 async def main():
     ip = getIPAddress()
-    async with websockets.asyncio.server.serve(listen, 'localhost', 8765, ssl=ssl_context) as server:
+    async with websockets.asyncio.server.serve(listen, '0.0.0.0', 8765, ssl=ssl_context) as server:
         print(type(server))
         print("Started server websocket, listening...")
         await server.serve_forever()
