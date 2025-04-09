@@ -41,6 +41,7 @@ class ConnectionList:
             print("The provided websocket is missing! Adding it...")
             self.addSocket(socket)
         try:
+            print("sendMsgToSocket(): About to send message", msgData)
             await socket.send(msgData)
             print("Successfully sent the message!")
             return True

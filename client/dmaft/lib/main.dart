@@ -161,6 +161,27 @@ class Handler {
         Conversation convo = Conversation(convoID: data['ConversationId'], convoMembers: members, lastModified: DateTime.now().toUtc().toString());
         databaseService.addConvo(convo);
 
+        final net = Network();
+        if (data['MemberData'] != null) {
+          for (var item in data['MemberData']) {
+            if (item['UserId'] == net.getUserID()) continue;
+            else {
+              Contact temp = Contact(
+                id: item['UserId'],
+                name: item['UserName'],
+                pronouns: item['Status'],
+                bio: item['Bio'],
+                pic: base64Decode(item['ProfilePic']),
+                lastModified: DateTime.now().toUtc().toString()
+              );
+              databaseService.addContact(temp);
+              print("Successfully added user ${item['UserId']} as a contact!");
+            }
+          }
+        }
+        else {
+          print("No member detail data was found in the new conversation request.");
+        }
 
       case 'INCOMINGMESSAGE':
         const requiredKeys = ['OriginalReceiptTimestamp', 'MessageId', 'SenderId', 'ConversationId', 'MessageType', 'MessageData'];

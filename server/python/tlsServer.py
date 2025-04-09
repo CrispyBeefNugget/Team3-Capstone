@@ -71,7 +71,9 @@ def sendOldMessages(userID: str):
         return True
     
     for message in oldMessages:
-        msgData = message[4]
+        print("Old message found:", message)
+        msgData = message[5] #the zeroth index is the row ID in the internal database. First real column starts at index 1.
+        print("Attempting to send message", msgData, "to user",userID)
         connectedClients.sendMsgToUser(userID, msgData)
 
     dmaftServerDB.deleteAllMsgsForUser(connection=dbConn, userID=userID)
@@ -101,7 +103,10 @@ def handlePingMsg(clientRequest: dict, websocket: websockets.asyncio.server.Serv
             if authSuccessful:
                 connectedClients.setUserOnSocket(websocket, result['UserId'])
                 #Deliver all old messages too
+                print("User ", result['UserId'], "successfully ping authed; attempting to send old messages...")
                 sendOldMessages(result['UserId'])
+                print("Old messages for", result['UserId'], "should now be sent!")
+
 
     clientRequest['Successful'] = True
     clientRequest['ServerTimestamp'] = time.time()
@@ -368,7 +373,7 @@ def handleSendMessageRequest(clientRequest: dict):
     if len(remainingUsers) > 0:
         dbConn = dmaftServerDB.startDB()
         for user in remainingUsers:
-            dmaftServerDB.addToMailbox(connection=dbConn, conversationID=clientRequest['ConversationId'], recipientID=user, msgDict=userMsgJSON, expireTime=(int(time.time()) + 604800)) #Give it one week to send out
+            dmaftServerDB.addToMailbox(connection=dbConn, conversationID=clientRequest['ConversationId'], recipientID=user, msgDict=userMsgData, expireTime=(int(time.time()) + 604800)) #Give it one week to send out
 
     clientRequest['Successful'] = True
     clientRequest['ServerTimestamp'] = int(time.time())
@@ -528,7 +533,7 @@ async def listen(websocket: websockets.asyncio.server.ServerConnection):
 
 async def main():
     ip = getIPAddress()
-    async with websockets.asyncio.server.serve(listen, '0.0.0.0', 8765, ssl=ssl_context) as server:
+    async with websockets.asyncio.server.serve(listen, 'localhost', 8765, ssl=ssl_context) as server:
         print(type(server))
         print("Started server websocket, listening...")
         await server.serve_forever()
