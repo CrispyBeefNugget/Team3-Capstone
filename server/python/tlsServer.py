@@ -21,9 +21,12 @@ import handleAuth
 
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
+ssl_cert = 'keys/peregrine-tls_cert.pem'
+ssl_key = 'keys/peregrine-tls_key.pem'
+
 # Nigel's path
-ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
-ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
+# ssl_cert = '/Users/Shared/Keys/DMAFT/dmaft-tls_cert.pem'
+# ssl_key = '/Users/Shared/Keys/DMAFT/dmaft-tls_key.pem'
 
 # Jeremey's path
 # ssl_cert = 'C:/Users/jclar/OneDrive/Documents/CS4996/ssl/dmaft-tls_cert.pem'
