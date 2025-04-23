@@ -21,21 +21,6 @@ def handleConnectRequest(clientRequest: dict):
     if clientRequest['UserId'] in ['',None] and clientRequest['Register'] not in ['True','true', True]:
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Received challenge request with Register set to False and no UserId specified. Set Register to True to request a new account, or specify an existing UserId to log in to.')
 
-
-    #If the client specified an account, make sure that user first exists
-    if clientRequest['UserId'] not in ['',None]:
-        dbConn = dmaftServerDB.startDB()
-        try:
-            if not dmaftServerDB.doesUserExist(connection=dbConn, userID=clientRequest['UserId']):
-                dmaftServerDB.closeDB(dbConn)
-                return makeError(clientRequest=clientRequest, errorCode='InvalidUserId', reason='The specified UserId does not exist. Please specify a different user or send a registration request.')
-        except Exception as e:
-            print("handleAuth.handleConnectRequest(): Exception occurred:", e)
-            dmaftServerDB.closeDB(dbConn)
-            return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', retry=True, reason='Failed to query the database to check if the specified user is registered.')
-
-        dmaftServerDB.closeDB(dbConn)
-
     #Parse the key components into a valid RSA key
     try:
         userPubKeyExp = int(clientRequest['UserPublicKeyExp'])
@@ -49,6 +34,31 @@ def handleConnectRequest(clientRequest: dict):
     except Exception as e:
         print("Exception when trying to construct key:\n", e)
         return makeError(clientRequest=clientRequest, errorCode='BadRequest', reason='Failed to construct the RSA public key from the given parameters.')
+
+    #If the client specified an account, make sure that user first exists
+    if clientRequest['UserId'] not in ['',None]:
+        dbConn = dmaftServerDB.startDB()
+        try:
+            if not dmaftServerDB.doesUserExist(connection=dbConn, userID=clientRequest['UserId']):
+                dmaftServerDB.closeDB(dbConn)
+                return makeError(clientRequest=clientRequest, errorCode='InvalidUserId', reason='The specified UserId does not exist. Please specify a different user or send a registration request.')
+        except Exception as e:
+            print("handleAuth.handleConnectRequest(): Exception occurred:", e)
+            dmaftServerDB.closeDB(dbConn)
+            return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', retry=True, reason='Failed to query the database to check if the specified user is registered.')
+
+        #Make sure the client specified the correct public key.
+        #Otherwise, the client that sent this request is attempting to impersonate the specified user.
+        try:
+            if not dmaftServerDB.verifyPublicKey(connection=dbConn, userID=clientRequest['UserId'], publicKey=pubKey):
+                print("handleAuth.handleConnectRequest(): Provided public key is incorrect!")
+                return makeError(clientRequest=clientRequest, errorCode='WrongPublicKey', reason='This user is registered with a different public key. Please submit the correct public key that was previously registered.')
+            else:
+                print("handleAuth.handleConnectRequest(): Successfully validated provided public key.")
+        except:
+            return makeError(clientRequest=clientRequest, errorCode='ServerInternalError', reason='Failed to verify whether the provided public key is the one originally registered for this user.')
+
+        dmaftServerDB.closeDB(dbConn)
 
     #Create the challenge and send it to the client
     if clientRequest['UserId'] == '':

@@ -284,6 +284,27 @@ def registerUser(*, connection: sqlite3.Connection, publicKey: rsa.RSAPublicKey)
     except Exception as e:
         print("Unable to register new user: ", e)
         return None
+    
+def verifyPublicKey(*, connection: sqlite3.Connection, userID: str, publicKey: rsa.RSAPublicKey):
+    try:
+        with connection:
+            stmt = 'SELECT UserID, UserPublicKeySHA2_512 FROM tblRegisteredUsers WHERE UserID = ?;'
+            cursor = connection.execute(stmt, [userID])
+            userRecords = cursor.fetchall()
+    except Exception as e:
+        print("Unable to query the registered users table to verify a public key: ", e)
+        return False
+
+    if userRecords is None:
+        return False
+    if len(userRecords) != 1:
+        return False
+    
+    record = userRecords[0]
+    expectedKeyHash = record[1]
+    givenKeyHash = crypto.getSHA512(crypto.getPubKeyBytes(publicKey))
+    return expectedKeyHash == givenKeyHash
+
 
 #Searches the database by UserID.
 #Returns a list of results if successful and None if failed.
